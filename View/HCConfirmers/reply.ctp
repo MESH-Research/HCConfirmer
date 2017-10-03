@@ -25,14 +25,29 @@
  * @license       Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
  */
 ?>
+
+<div id="container">
 <?php if(!empty($invite)): ?>
 <?php
-  $params = array('title' => 'Put Your Title Here');
+  $params = array('title' => $current_enrollment_flow . ' enrollment');
   print $this->element("pageTitle", $params);
   
   $verifyEmail = !empty($invite['CoInvite']['email_address_id']);
-?>
 
+if( $current_enrollment_flow !== 'HC' ) : ?>
+
+<div class="enrollment_flow_msg">
+<?php if( ! in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ): ?>
+<p><?php echo $current_enrollment_flow; ?> does not have this email on file as an active member</p>
+<?php else : ?>
+<p>We did find this email on file with <?php echo implode(', ', $user_societies); ?></p>
+<?php endif; ?>
+</div>
+<?php include APP . DS . "View" . DS . "CoInvites" . DS . "buttons.inc"; ?>
+
+<?php else: ?>
+
+<?php if( in_array(false, $email_verify ) ) : ?>
 <div class="invitation">
   <span class="invitation-text">
     <?php print _txt(($verifyEmail ? 'fd.ev.for' : 'fd.inv.for'),
@@ -40,9 +55,86 @@
   </span>
 
   <?php
-    // Include the default confirmation buttons. This requires $invite and
-    // $co_enrollment_flow to be set by the controller.
-    include APP . DS . "View" . DS . "CoInvites" . DS . "buttons.inc";
+     // Include the default confirmation buttons. This requires $invite and
+     // $co_enrollment_flow to be set by the controller.
+     include APP . DS . "View" . DS . "CoInvites" . DS . "buttons.inc";
   ?>
-</div>
+</div> <!-- /.invitiation -->
+<?php else : ?>
+
+<div class="email_error">
+  <p><?php echo $email_verify['message']; ?></p>
+</div> <!-- /.email_error -->
+<?php endif; 
+endif;
+ ?>
+<div class="fields">
+
+  <div class="modelbox">
+    <div class="boxtitle">
+      <span class="boxtitle-link">Name<span class="required">*</span></span>
+    </div> <!-- /.boxtitle -->
+    
+    <div class="modelbox-data">
+
+      <div class="modelbox-data-field">
+        <div class="modelbox-data-label">Prefix</div> <!-- /.modelbox-data-label -->
+        <div class="modelbox-data-value"><?php echo ( !empty( $invitee['PrimaryName']['suffix'] ) ) ? $invitee['PrimaryName']['honorific'] : '' ; ?></div> <!-- /.model-box-data-value -->
+      </div> <!-- /.modelbox-data-field -->
+      
+      <div class="modelbox-data-field">
+        <div class="modelbox-data-label">Given Name(s)</div> <!-- /.modelbox-data-label -->
+        <div class="modelbox-data-value"><?php echo $invitee['PrimaryName']['given']; ?></div> <!-- /.model-box-data-value -->
+      </div> <!-- /.modelbox-data-field -->
+      
+      <div class="modelbox-data-field">
+        <div class="modelbox-data-label">Last Name</div> <!-- /.modelbox-data-label -->
+        <div class="modelbox-data-value"><?php echo $invitee['PrimaryName']['family']; ?></div> <!-- /.model-box-data-value -->
+      </div> <!-- /.modelbox-data-field -->
+      
+      <div class="modelbox-data-field">
+        <div class="modelbox-data-label">Suffix</div> <!-- /.modelbox-data-label -->
+        <div class="modelbox-data-value"><?php echo ( !empty( $invitee['PrimaryName']['suffix'] ) ) ? $invitee['PrimaryName']['suffix'] : '' ; ?></div> <!-- /.model-box-data-value -->
+      </div> <!-- /.modelbox-data-field -->
+      
+    </div><!-- /.modelbox-data -->
+  </div> <!-- /.modelbox -->
+
+  <div class="modelbox">
+    <div class="boxtitle">
+      <span class="boxtitle-link">Email Address</span>
+    </div> <!-- /.boxtitle -->
+
+    <div class="modelbox-data">
+      <div class="modelbox-data-label">Email</div> <!-- /.modelbox-data-label -->
+      <div class="modelbox-data-value"><?php echo $invitee['CoInvite']['mail']; ?></div> <!-- /.modelbox-data-value -->
+    </div> <!-- /.modelbox-data -->
+  </div> <!-- /.modelbox -->
+
+  <div class="modelbox">
+    <div class="boxtitle">
+      <span class="boxtitle-link">Organization</span>
+    </div> <!-- /.boxtitle -->
+
+    <div class="modelbox-data">
+      <div class="modelbox-data-label">Organization</div> <!-- /.modelbox-data-label -->
+      <div class="modelbox-data-value"><?php echo $invitee['CoPersonRole'][0]['o']; ?></div> <!-- /.modelbox-data-value -->
+    </div> <!-- /.modelbox-data -->
+  </div> <!-- /.modelbox -->
+
+  <div class="modelbox">
+    <div class="boxtitle">
+      <span class="boxtitle-link">Title</span>
+    </div> <!-- /.boxtitle -->
+
+    <div class="modelbox-data">
+      <div class="modelbox-data-label">Title</div> <!-- /.modelbox-data-label -->
+      <div class="modelbox-data-value"><?php echo $invitee['CoPersonRole'][0]['title']; ?></div> <!-- /.modelbox-data-value -->
+    </div> <!-- /.modelbox-data -->
+  </div> <!-- /.modelbox -->
+  
+</div> <!-- /.fields -->
+
+
+</div> <!-- /.container -->
 <?php endif;
