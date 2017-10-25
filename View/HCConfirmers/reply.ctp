@@ -34,16 +34,18 @@
   
   $verifyEmail = !empty($invite['CoInvite']['email_address_id']);
 
+//var_dump( APP  . "View" . DS . "CoInvites" . DS . "buttons.inc" );
+
 if( $current_enrollment_flow !== 'HC' ) : ?>
 
 <div class="enrollment_flow_msg">
-<?php if( ! in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ): ?>
+<?php if( ! in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ) : ?>
 <p><?php echo $current_enrollment_flow; ?> does not have this email on file as an active member</p>
 <?php else : ?>
 <p>We did find this email on file with <?php echo implode(', ', $user_societies); ?></p>
 <?php endif; ?>
 </div>
-<?php include APP . DS . "View" . DS . "CoInvites" . DS . "buttons.inc"; ?>
+<?php include "buttons.inc"; ?>
 
 <?php else: ?>
 
@@ -57,13 +59,21 @@ if( $current_enrollment_flow !== 'HC' ) : ?>
   <?php
      // Include the default confirmation buttons. This requires $invite and
      // $co_enrollment_flow to be set by the controller.
-     include APP . DS . "View" . DS . "CoInvites" . DS . "buttons.inc";
+     include  "buttons.inc";
   ?>
 </div> <!-- /.invitiation -->
 <?php else : ?>
 
 <div class="email_error">
   <p><?php echo $email_verify['message']; ?></p>
+<?php 
+include  "buttons.inc";
+   /* print $this->Html->link(
+      'Go to Login',
+      'https://' . $email_verify['hc_domain'] . '/Shibboleth.sso/Login',
+      array('class' => 'cancelbutton')
+    );*/
+?>
 </div> <!-- /.email_error -->
 <?php endif; 
 endif;

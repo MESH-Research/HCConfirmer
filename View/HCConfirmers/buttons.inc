@@ -26,6 +26,7 @@
  */
 
   if(!empty($invite['CoInvite']['email_address_id'])) {
+
     // We are verifying email
     
     print $this->Html->link(
@@ -46,6 +47,11 @@
       array('class' => 'cancelbutton')
     );
   } else {
+
+var_dump( $societies_list[$current_enrollment_flow_id] );
+
+if( in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ||  $email_verify['exists'] == false ) {
+
     print $this->Html->link(
       _txt('op.accept'),
       array('plugin' => null,
@@ -55,7 +61,22 @@
             $invite['CoInvite']['invitation']),
       array('class' => 'checkbutton')
     );
-    
+}
+//    if( $current_enrollment_flow != 'HC' ) {
+   
+/* print $this->Html->link(
+      _txt('op.decline'),
+      array(
+         'plugin' => 'h_c_confirmer',
+         'controller' => 'h_c_confirmers',
+	 'action' => 'decline_petition',
+         $invite['CoInvite']['invitation']
+      ),
+      array('class' => 'cancelbutton')
+    );
+*/
+//'https://' . $societies_list[$current_enrollment_flow_id] . '.' . constant('HC_DOMAIN'),
+//  } else {
     print $this->Html->link(
       _txt('op.decline'),
       array('plugin' => null,
@@ -64,4 +85,5 @@
             $invite['CoInvite']['invitation']),
       array('class' => 'cancelbutton')
     );
+//}    
   }
