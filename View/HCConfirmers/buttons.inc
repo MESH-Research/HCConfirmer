@@ -48,9 +48,7 @@
     );
   } else {
 
-var_dump( $societies_list[$current_enrollment_flow_id] );
-
-if( in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ||  $email_verify['exists'] == false ) {
+if( in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) &&  $email_verify['exists'] == false ) {
 
     print $this->Html->link(
       _txt('op.accept'),
@@ -62,7 +60,7 @@ if( in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ||
       array('class' => 'checkbutton')
     );
 }
-//    if( $current_enrollment_flow != 'HC' ) {
+//    if( $current_enrollment_flow_cou != 'HC' ) {
    
 /* print $this->Html->link(
       _txt('op.decline'),
@@ -85,5 +83,6 @@ if( in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ||
             $invite['CoInvite']['invitation']),
       array('class' => 'cancelbutton')
     );
+
 //}    
   }

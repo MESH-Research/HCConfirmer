@@ -29,20 +29,21 @@
 <div id="container">
 <?php if(!empty($invite)): ?>
 <?php
-  $params = array('title' => $current_enrollment_flow . ' enrollment');
+  $params = array('title' => $current_enrollment_flow_cou . ' Commons Self Signup');
   print $this->element("pageTitle", $params);
   
   $verifyEmail = !empty($invite['CoInvite']['email_address_id']);
 
 //var_dump( APP  . "View" . DS . "CoInvites" . DS . "buttons.inc" );
 
-if( $current_enrollment_flow !== 'HC' ) : ?>
+if( $current_enrollment_flow_cou !== 'HC' ) : ?>
 
 <div class="enrollment_flow_msg">
 <?php if( ! in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ) : ?>
-<p><?php echo $current_enrollment_flow; ?> does not have this email on file as an active member</p>
-<?php else : ?>
-<p>We did find this email on file with <?php echo implode(', ', $user_societies); ?></p>
+<p><?php echo $current_enrollment_flow_cou; ?> does not have this email on file as an active member</p>
+<?php endif; ?>
+<?php if(!empty($user_societies)) : ?>
+<p>We found this email on file with the following societies: <?php echo implode(', ', $user_societies); ?></p>
 <?php endif; ?>
 </div>
 <?php include "buttons.inc"; ?>

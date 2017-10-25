@@ -125,7 +125,7 @@ $user_societies = $this->searchByEmail( $invitee['CoInvite']['mail'] );
 //var_dump( $user_societies );
 
 $this->set('user_societies', $user_societies);
-$this->set('current_enrollment_flow', $this->societies[$invite['CoPetition']['co_enrollment_flow_id']]);
+$this->set('current_enrollment_flow_cou', $this->societies[$invite['CoPetition']['co_enrollment_flow_id']]);
 $this->set('current_enrollment_flow_id', $invite['CoPetition']['co_enrollment_flow_id'] );
 $this->set('societies_list', $this->societies );
 //echo "<br />currently in " . $this->societies[$invite['CoPetition']['co_enrollment_flow_id']] . ' enrollment flow';    
@@ -260,7 +260,7 @@ if( count( $society ) > 1 ) {
 
       $emailData = [
 	'exists' => true, 
-	'message' => 'This email already exists! Please check your current petition status to make sure it is not a duplicate.',
+	'message' => 'This email has already been enrolled in Humanities Commons.',
 	'hc_domain' => constant( 'HC_DOMAIN' )
       ];
 
