@@ -39,7 +39,7 @@
 if( $current_enrollment_flow_cou !== 'HC' ) : ?>
 
 <div class="enrollment_flow_msg">
-<?php if( ! in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ) : ?>
+<?php if( is_null( $user_societies ) ||  ! in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ) : ?>
 <p><?php echo $current_enrollment_flow_cou; ?> does not have this email on file as an active member</p>
 <?php endif; ?>
 <?php if(!empty($user_societies)) : ?>
