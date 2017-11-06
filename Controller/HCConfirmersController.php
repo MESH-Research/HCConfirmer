@@ -94,22 +94,16 @@ class HCConfirmersController extends StandardController {
    */
   
   function reply($inviteid) {
-echo "<pre>";
-
-
-//var_dump( App::objects('Model') );
 
     // Pull the data here that your view will need. eg:
     // (If you want to use the default confirmation buttons, you need to set $invite
     // and $co_enrollment_flow.) 
-//var_dump( $inviteid );
+
     $args = array();
     $args['conditions']['CoInvite.invitation'] = $inviteid;
     $args['contain'] = array('CoPetition', 'EmailAddress');
     
     $invite = $this->CoInvite->find('first', $args);
-
-//var_dump( $invite );
 
     $this->set('invite', $invite);
    
@@ -120,50 +114,22 @@ echo "<pre>";
 
     $invitee = $this->CoInvite->CoPerson->find('first', $args);
 
-    $emailVerify = $this->checkEmailAvailability( $invitee['CoInvite']['mail'] );
+    $emailVerify = $this->checkEmailAvailability( $invitee['CoInvite']['mail'], $invite['CoInvite']['co_person_id'] );
 
-//var_dump( $emailVerify );
+
 $user_societies = $this->searchByEmail( $invitee['CoInvite']['mail'] );
-
-//var_dump( $user_societies );
 
 $this->set('user_societies', $user_societies);
 $this->set('current_enrollment_flow_cou', $this->societies[$invite['CoPetition']['co_enrollment_flow_id']]);
 $this->set('current_enrollment_flow_id', $invite['CoPetition']['co_enrollment_flow_id'] );
-$this->set('societies_list', $this->societies );
-//echo "<br />currently in " . $this->societies[$invite['CoPetition']['co_enrollment_flow_id']] . ' enrollment flow';    
+$this->set('societies_list', $this->societies );   
  
     $this->set('email_verify', $emailVerify );
 
     $petition = $this->CoPetition->find('first', [ 'conditions' => [ 'CoPetition.enrollee_co_person_id' => $invite['CoInvite']['co_person_id'] ], 'recursive' => -1 ] );
 
-//var_dump( $petition );
-//debug( $this->CoOrgIdentityLink );    
-
-    if( $emailVerify['exists'] == true && $petition['CoPetition']['status'] == 'PC' ) {
-
-      //$this->decline_petition( $inviteid );
-      //set as duplicate petition
-      //$this->CoPetition->updateAll([ 'CoPetition.status' => $this->CoPetition->getDataSource()->value(StatusEnum::Duplicate) ], [ 'CoPetition.enrollee_co_person_id' => $invite['CoInvite']['co_person_id'] ])->save();
-    // $this->CoPetition->updateStatus( $petition['CoPetition']['id'], $this->CoPetition->getDataSource()->value(StatusEnum::Duplicate), $invitee['CoPerson']['id'] );
-      
-      //then we decline the duplicate petition
-      //$this->CoInvite->decline( $invite['CoInvite']['invitation'] )->save();
-    }
-
-//var_dump( $petition );
-
-/*
-use orgidentitylinks to get co_person data
-use orgIdentity model to join data from orgidentitylinks
-*/
-/*echo "<pre>";
-var_dump( $emailVerify );
-//var_dump( $this->OrgIdentity->find('first') );
-var_dump( $petition['CoPetition'] );
-//var_dump( $this->CoPetition->find('first', [ 'conditions' => [ 'CoPetition.enrollee_co_person_id' => $invite['CoInvite']['co_person_id'] ], 'recursive' => -1 ] ) );
-//var_dump( $this->CoPetitionAttribute->find('first', [ 'conditions' => [ 'CoPetitionAttribute.co_petition_id' => $petition['CoPetition']['id'] ] ] ) );
-echo "</pre>";*/
+    //checks for duplicate petition
+    if( $emailVerify['exists'] == true && $petition['CoPetition']['status'] == 'PC' ) { }
 
     $this->set('invitee', $invitee);
     $this->set('title_for_layout', 'Invitation to Humanities Commons');
@@ -178,7 +144,6 @@ echo "</pre>";*/
       $this->set('co_enrollment_flow', $enrollmentFlow);
     }
 
-echo "</pre>";
   }
 
   public function searchByEmail( $email ) {
@@ -224,19 +189,15 @@ echo "</pre>";
 
         // And the source info itself
         $ret[ $s['OrgIdentitySource']['id'] ][$key]['OrgIdentitySource'] = $s['OrgIdentitySource'];
-//var_dump( explode( ',', $ret[$s['OrgIdentitySource']['id']][$key]['OrgIdentitySourceRecord']['source_record'] ) );
 
 $society = explode( '_', $ret[$s['OrgIdentitySource']['id']][$key]["OrgIdentitySource"]["description"] );
 if( count( $society ) > 1 ) {
    $society_list[] = $society[0];
 }
 
-//var_dump( $society_list );
-
       }
      }
     }
-//echo "RESULTS";
 
     return $society_list;
 
@@ -248,21 +209,17 @@ if( count( $society ) > 1 ) {
  * @param  string $email      current email being used for CoInvite
  * @return array  $emailData  email data to be output with message if email exists and is verified
  */
-  public function checkEmailAvailability( $email ) {
+  public function checkEmailAvailability( $email, $copersonid ) {
 
-    //lets query the EmailAdddress model and just return the data for that model, including orgidentity data
- //   $e_org_id = $this->EmailAddress->find('first', [ 'conditions' => [ 'EmailAddress.mail' => $email ] ] );
-   // $e = $this->EmailAddress->find('all', [ 'conditions' => [ 'EmailAddress.mail' => $email ] ], [ 'joins' => [ [ 'table' => 'OrgIdentity', 'type' => 'LEFT', 'conditions' => [ 'OrgIdentity.id' => $e_org_id['OrgIdentity']['id']  ] ] ] ] );
+//echo "<pre>";
+   $e = $this->EmailAddress->find('first', [ 'conditions' => [ 'EmailAddress.mail' => $email ] ] );
+  //$e = $this->EmailAddress->find('all', [ 'conditions' => [ 'EmailAddress.mail' => $email ], 'fields' => 'DISTINCT id, mail' ]  );
+ 
+//  var_dump( $e );
+ 
+//echo "</pre>";
 
-//$e = $this->EmailAddress->find('first', [ 'conditions' => [ 'EmailAddress.mail' => $email ] ], [ 'joins' => [ [ 'table' => 'co_petitions', 'alias' => 'CoPetition', 'type' => 'INNER', 'conditions' => [ 'CoPetition.petitioner_co_person_id' => 'EmailAddress.co_person_id' ] ] ] ] );
-
-  $e = $this->EmailAddress->find('first', [ 'conditions' => [ 'EmailAddress.mail' => $email ] ]  );
-   // $e = $this->EmailAddress->find('first', [ 'conditions' => [ 'EmailAddress.mail' => $email ], 'contain' => ['OrgIdentity'] ] );
-    //$orgidentity = $this->OrgIdentity->find('all', [ 'conditions' => [ 'OrgIdentity.id' => $e['OrgIdentity']['id'] ] ] );
-
-//var_dump($e);
-
-    if( array_key_exists('EmailAddress', $e) && $e['EmailAddress']['verified'] == true ) {
+  if( array_key_exists('EmailAddress', $e) && $e['EmailAddress']['verified'] == true ) {
 
       $emailData = [
 	'exists' => true, 
@@ -279,8 +236,6 @@ if( count( $society ) > 1 ) {
   }
 
   public function decline_petition( $inviteid ) {
-
-    //$this->autoRender = false;
     
     $args = array();
     $args['conditions']['CoInvite.invitation'] = $inviteid;
@@ -289,9 +244,10 @@ if( count( $society ) > 1 ) {
     $invite = $this->CoInvite->find('first', $args);
 
 try {
-    //$this->CoPetition->updateStatus( $inviteid, StatusEnum::Declined, $invite['CoInvite']['co_person_id'] );    
     $this->CoInvite->processReply( $inviteid, false );
+    $this->CoPetition->updateStatus( $invite['CoPetition']['id'], StatusEnum::Declined, $invite['CoInvite']['co_person_id'] );
     $this->CoPerson->recalculateStatus( $invite['CoInvite']['co_person_id'] );
+    $this->redirect('https://' . constant('HC_DOMAIN')  . '/remind-me');
  } catch(Exception $e) {
 echo $e->getMessage();
 }
