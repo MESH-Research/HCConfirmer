@@ -48,7 +48,7 @@
     );
   } else {
 
-//var_dump( $user_societies );
+//var_dump( $current_enrollment_flow_cou );
 
 if( ! is_null( $user_societies ) && in_array( $societies_list[$current_enrollment_flow_id], array_merge( $user_societies, array( 'HC' ) ) ) && $email_verify['exists'] == false ) {
 
@@ -61,21 +61,7 @@ if( ! is_null( $user_societies ) && in_array( $societies_list[$current_enrollmen
             $invite['CoInvite']['invitation']),
       array('class' => 'checkbutton')
     );
-}
-    if( $current_enrollment_flow_cou != 'HC' ) {
-   
- print $this->Html->link(
-      _txt('op.decline'),
-      array('plugin' => 'h_c_confirmer',
-         'controller' => 'h_c_confirmers',
-	 'action' => 'decline_petition',
-         $invite['CoInvite']['invitation']
-      ),
-      array('class' => 'cancelbutton')
-    );
 
-//'https://' . $societies_list[$current_enrollment_flow_id] . '.' . constant('HC_DOMAIN'),
-  } else {
     print $this->Html->link(
       _txt('op.decline'),
       array('plugin' => 'h_c_confirmer',
@@ -83,7 +69,36 @@ if( ! is_null( $user_societies ) && in_array( $societies_list[$current_enrollmen
             'action' => 'decline_petition',
             $invite['CoInvite']['invitation']),
       array('class' => 'cancelbutton')
-    );
+    ); 
 
-  }
-  }
+}
+//default text
+$btn_text = 'Decline';
+
+    if( $current_enrollment_flow_cou != 'HC' ) {
+       $btn_text = 'Return to Commons';
+
+       print $this->Html->link(
+        $btn_text,
+        array('plugin' => 'h_c_confirmer',
+            'controller' => 'h_c_confirmers',
+            'action' => 'decline_petition',
+            $invite['CoInvite']['invitation']),
+         array('class' => 'cancelbutton')
+       );
+
+     //'https://' . $societies_list[$current_enrollment_flow_id] . '.' . constant('HC_DOMAIN'),
+     } else if( $current_enrollment_flow_cou == 'HC' && $email_verify['exists'] == true ) {
+       $btn_text = 'Remind Me';
+
+       print $this->Html->link(
+        $btn_text,
+        array('plugin' => 'h_c_confirmer',
+            'controller' => 'h_c_confirmers',
+            'action' => 'decline_petition',
+            $invite['CoInvite']['invitation']),
+         array('class' => 'cancelbutton')
+       );
+     }
+
+    }

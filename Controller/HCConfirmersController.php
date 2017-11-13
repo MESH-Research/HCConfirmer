@@ -41,9 +41,14 @@ class HCConfirmersController extends StandardController {
     '164' => 'ASEEES',
     '166' => 'CAA',
     '158' => 'HC',
+    '454' => 'HC',
     '160' => 'MLA',
     '389' => 'UP'
   ];
+
+  public $dupe_email = false;
+
+  public $cur_enrollment_flow;
 
   /**
    * Callback before other controller methods are invoked or views are rendered.
@@ -114,8 +119,9 @@ class HCConfirmersController extends StandardController {
 
     $invitee = $this->CoInvite->CoPerson->find('first', $args);
 
-    $emailVerify = $this->checkEmailAvailability( $invitee['CoInvite']['mail'], $invite['CoInvite']['co_person_id'] );
-
+    //Enrollment flows that use EnvSource Org Identity Source will have verified emails
+    //TODO might have to search for active Org Identities
+    $emailVerify = $this->checkEmailAvailability( $invitee['CoInvite']['mail'], $invite['CoPetition']['enrollee_org_identity_id'] );
 
 $user_societies = $this->searchByEmail( $invitee['CoInvite']['mail'] );
 
@@ -128,6 +134,10 @@ $this->set('societies_list', $this->societies );
 
     $petition = $this->CoPetition->find('first', [ 'conditions' => [ 'CoPetition.enrollee_co_person_id' => $invite['CoInvite']['co_person_id'] ], 'recursive' => -1 ] );
 
+//grabs current step in petition
+//$this->CoPetition->currentStep( $petition['CoPetition']['id'] );
+
+    //TODO what is this doing?
     //checks for duplicate petition
     if( $emailVerify['exists'] == true && $petition['CoPetition']['status'] == 'PC' ) { }
 
@@ -140,7 +150,11 @@ $this->set('societies_list', $this->societies );
       $args['contain'][] = 'CoEnrollmentAttribute';
       
       $enrollmentFlow = $this->CoEnrollmentFlow->find('first', $args);
-      
+
+//var_dump( $enrollmentFlow );
+
+     $this->cur_enrollment_flow = $this->societies[$enrollmentFlow['CoEnrollmentFlow']['id']]; 
+
       $this->set('co_enrollment_flow', $enrollmentFlow);
     }
 
@@ -204,26 +218,32 @@ if( count( $society ) > 1 ) {
   }
 
  /**
- * Checks if email is available (verified) or not and outputs message
+ * Checks if email already exists (verified) or not and outputs message
  * 
- * @param  string $email      current email being used for CoInvite
- * @return array  $emailData  email data to be output with message if email exists and is verified
+ * @param  string $email        current email being used for CoInvite
+ * @param  string $orgidentityid current org_identity_id being used for CoInvite
+ * @return array  $emailData    email data to be output with message if email exists and is verified
  */
-  public function checkEmailAvailability( $email, $copersonid ) {
+  public function checkEmailAvailability( $email, $orgidentityid ) {
 
-//echo "<pre>";
-   $e = $this->EmailAddress->find('first', [ 'conditions' => [ 'EmailAddress.mail' => $email ] ] );
-  //$e = $this->EmailAddress->find('all', [ 'conditions' => [ 'EmailAddress.mail' => $email ], 'fields' => 'DISTINCT id, mail' ]  );
- 
-//  var_dump( $e );
- 
-//echo "</pre>";
+   /*
+    * Check if the email has been verified at any time in the past.
+    */
+   $args = array();
+   $args['conditions']['EmailAddress.mail'] = $email;
+   $args['conditions'][] = 'EmailAddress.verified IS true';
+   $args['conditions'][] = 'EmailAddress.email_address_id IS NULL';
+   $args['conditions'][] = 'OrgIdentity.id != ' . $orgidentityid;
+   $args['fields'][] = 'DISTINCT EmailAddress.mail, EmailAddress.verified';
+   $e = $this->EmailAddress->find('first', $args);
 
   if( array_key_exists('EmailAddress', $e) && $e['EmailAddress']['verified'] == true ) {
 
+      $this->dupe_email = true;
+
       $emailData = [
 	'exists' => true, 
-	'message' => 'This email has already been enrolled in Humanities Commons.',
+	'message' => 'We already have this email on file with <em>Humanities Commons</em>.',
 	'hc_domain' => constant( 'HC_DOMAIN' )
       ];
 
@@ -247,7 +267,13 @@ try {
     $this->CoInvite->processReply( $inviteid, false );
     $this->CoPetition->updateStatus( $invite['CoPetition']['id'], StatusEnum::Declined, $invite['CoInvite']['co_person_id'] );
     $this->CoPerson->recalculateStatus( $invite['CoInvite']['co_person_id'] );
-    $this->redirect('https://' . constant('HC_DOMAIN')  . '/remind-me');
+
+if( $this->dupe_email == true ) {
+    $this->redirect('https://' . constant('HC_DOMAIN') . '/remind-me' );
+} else {
+    $this->redirect('https://' . constant('HC_DOMAIN') );
+}
+
  } catch(Exception $e) {
 echo $e->getMessage();
 }

@@ -36,17 +36,28 @@
 
 //var_dump( APP  . "View" . DS . "CoInvites" . DS . "buttons.inc" );
 
-if( $current_enrollment_flow_cou !== 'HC' ) : ?>
+if( $current_enrollment_flow_cou !== 'HC' ) :
+//is_null( $user_societies )
+//var_dump( $user_societies );
+ ?>
 
+<?php if( $email_verify['exists'] == true && in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ) : ?>
+<div class="enrollment_flow_msg_dupe">
+<p>We already have this email on file with <em>Humanities Commons</em></p>
+<?php  else : ?>
 <div class="enrollment_flow_msg">
-<?php if( is_null( $user_societies ) ||  ! in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ) : ?>
-<p><?php echo $current_enrollment_flow_cou; ?> does not have this email on file as an active member</p>
-<?php endif; ?>
-<?php if(!empty($user_societies)) : ?>
-<p>We found this email on file with the following societies: <?php echo implode(', ', $user_societies); ?></p>
-<?php endif; ?>
+  <?php if( ! in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ) : ?>
+  <p><?php echo $current_enrollment_flow_cou; ?> does not have this email on file as an active member</p>
+  <?php endif;
+
+   if(!empty($user_societies)) : ?>
+  <p>We found this email on file with the following societies: <?php echo implode(', ', $user_societies); ?></p>
+  <?php endif; ?>
+  </div>
+  <?php 
+    endif;
+   include "buttons.inc"; ?>
 </div>
-<?php include "buttons.inc"; ?>
 
 <?php else: ?>
 
