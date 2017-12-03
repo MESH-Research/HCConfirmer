@@ -43,20 +43,44 @@ if( $current_enrollment_flow_cou !== 'HC' ) :
 
 <?php if( $email_verify['exists'] == true && in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ) : ?>
 <div class="enrollment_flow_msg_dupe">
-<p>We already have this email on file with <em>Humanities Commons</em></p>
+<p>This e-mail is already associated with a <em>Humanities Commons</em> account. Forgotten how you log in? Click the Remind Me button below.</p>
 <?php  else : ?>
 <div class="enrollment_flow_msg">
   <?php if( ! in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ) : ?>
-  <p><?php echo $current_enrollment_flow_cou; ?> does not have this email on file as an active member</p>
-  <?php endif;
+  <p>This e-mail is not associated with a current <?php echo $current_enrollment_flow_cou; ?> member account.
 
-   if(!empty($user_societies)) : ?>
-  <p>We found this email on file with the following societies: <?php echo implode(', ', $user_societies); ?></p>
-  <?php endif; ?>
-  </div>
-  <?php 
+<ul>
+<li> Register for <?php echo $current_enrollment_flow_cou; ?> Commons with another email</li>
+<li> Register for Humanities Commons (you can always contact us if you believe you should have access to <?php echo $current_enrollment_flow_cou; ?> Commons)</li>
+<li> Explore Humanities Commons</li>
+</ul> 
+</p>
+     <?php
+
+       print $this->Html->link(
+        'Register for ' . $current_enrollment_flow_cou . ' Commons',
+        array('plugin' => 'h_c_confirmer',
+            'controller' => 'h_c_confirmers',
+            'action' => 'decline_petition',
+           $invite['CoInvite']['invitation'], $current_enrollment_flow_cou),
+         array('class' => 'cancelbutton')
+       );
+
+
+        print $this->Html->link(
+        'Register for Humanities Commons',
+        array('plugin' => 'h_c_confirmer',
+            'controller' => 'h_c_confirmers',
+            'action' => 'decline_petition',
+           $invite['CoInvite']['invitation'], 'HC'),
+         array('class' => 'cancelbutton')
+       );
+
+   endif;
+
     endif;
    include "buttons.inc"; ?>
+   </div>
 </div>
 
 <?php else: ?>

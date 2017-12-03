@@ -139,6 +139,7 @@ class HCConfirmersController extends StandardController {
     $this->set('email_verify', $emailVerify );
     $this->set('invitee', $invitee);
     $this->set('title_for_layout', 'Invitation to Humanities Commons');
+    $this->set('hc_domain', constant('HC_DOMAIN') );
 
     $petition = $this->CoPetition->find('first', [ 'conditions' => [ 'CoPetition.enrollee_co_person_id' => $invite['CoInvite']['co_person_id'] ], 'recursive' => -1 ] );
 
@@ -191,6 +192,7 @@ class HCConfirmersController extends StandardController {
        $candidates = $this->OrgIdentitySource->search($s['OrgIdentitySource']['id'], array('mail' => $email));
 
       foreach($candidates as $key => $c) {
+
         // Key results by source ID in case different sources return the same keys
 
         // See if there is an associated org identity for the candidate
@@ -209,7 +211,12 @@ class HCConfirmersController extends StandardController {
         // And the source info itself
         $ret[ $s['OrgIdentitySource']['id'] ][$key]['OrgIdentitySource'] = $s['OrgIdentitySource'];
 
+        if( count( explode( '_', $ret[$s['OrgIdentitySource']['id']][$key]["OrgIdentitySource"]["description"] ) ) > 1 ) {
         $society = explode( '_', $ret[$s['OrgIdentitySource']['id']][$key]["OrgIdentitySource"]["description"] );
+} else {
+        $society = explode( ' ', $ret[$s['OrgIdentitySource']['id']][$key]["OrgIdentitySource"]["description"] );
+}
+
         if( count( $society ) > 1 ) {
            $society_list[] = $society[0];
         }
@@ -260,7 +267,7 @@ class HCConfirmersController extends StandardController {
 
   }
 
-  public function decline_petition( $inviteid, $extra ) {
+  public function decline_petition( $inviteid ) {
     
     $args = array();
     $args['conditions']['CoInvite.invitation'] = $inviteid;
@@ -273,9 +280,15 @@ class HCConfirmersController extends StandardController {
         $this->CoPetition->updateStatus( $invite['CoPetition']['id'], StatusEnum::Declined, $invite['CoInvite']['co_person_id'] );
         $this->CoPerson->recalculateStatus( $invite['CoInvite']['co_person_id'] );
 
-        if( $this->params['pass'][1] == '1' ) {
+$current_society_id = array_search( $this->params['pass'][1], $this->societies );
+
+ if( $this->params['pass'][1] == 'remind-me' ) {
             $this->redirect('https://' . constant('HC_DOMAIN') . '/remind-me' );
-        } else {
+        } else if ( isset( $this->params['pass'][1] ) && $this->params['pass'][1] == 'HC' ) {
+               $this->redirect( array( 'plugin' => null, 'controller' => 'co_petitions', 'action' => 'start', 'coef:158', 'done:core' ) );
+        } else if( $this->params['pass'][1] !== 'HC' && in_array( $this->params['pass'][1], $this->societies ) == true ) {
+              $this->redirect( array( 'plugin' => null, 'controller' => 'co_petitions', 'action' => 'start', 'coef:' . $current_society_id ) );
+        } else if ( $this->params['pass'][1] == 'commons' )  {
             $this->redirect('https://' . constant('HC_DOMAIN') );
         }
 
