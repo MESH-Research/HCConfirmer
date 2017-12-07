@@ -48,9 +48,10 @@
     );
   } else {
 
-//var_dump( $current_enrollment_flow_cou );
 
-if( ! is_null( $user_societies ) && in_array( $societies_list[$current_enrollment_flow_id], array_merge( $user_societies, array( 'HC' ) ) ) && $email_verify['exists'] == false ) {
+  if( ! is_null( $user_societies ) &&
+         in_array( $societies_list[$current_enrollment_flow_id], array_merge( $user_societies, array( 'HC' ) ) ) &&
+         $email_verify['exists'] == false ) {
 
     print $this->Html->link(
       _txt('op.accept'),
@@ -71,34 +72,41 @@ if( ! is_null( $user_societies ) && in_array( $societies_list[$current_enrollmen
       array('class' => 'cancelbutton')
     ); 
 
-}
-//default text
-$btn_text = 'Decline';
+  }
+  //default text
+  $btn_text = 'Decline';
 
-    if( $current_enrollment_flow_cou != 'HC' ) {
-       $btn_text = 'Return to Commons';
+    if( $current_enrollment_flow_cou != 'HC' && $email_verify['exists'] == false ) {
+       $btn_text = 'Return to Humanities Commons';
 
        print $this->Html->link(
         $btn_text,
         array('plugin' => 'h_c_confirmer',
             'controller' => 'h_c_confirmers',
             'action' => 'decline_petition',
-            $invite['CoInvite']['invitation']),
+           $invite['CoInvite']['invitation'], 'commons'),
          array('class' => 'cancelbutton')
        );
 
      //'https://' . $societies_list[$current_enrollment_flow_id] . '.' . constant('HC_DOMAIN'),
-     } else if( $current_enrollment_flow_cou == 'HC' && $email_verify['exists'] == true ) {
+     } else if( $current_enrollment_flow_cou == 'HC' && $email_verify['exists'] == true ||
+ $current_enrollment_flow_cou != 'HC' && $email_verify['exists'] == true ) {
        $btn_text = 'Remind Me';
+
+	if( $duplicate_email == 1 ) {
+           $slug = 'remind-me';
+         } else {
+           $slug = '0';
+         }
 
        print $this->Html->link(
         $btn_text,
         array('plugin' => 'h_c_confirmer',
             'controller' => 'h_c_confirmers',
             'action' => 'decline_petition',
-            $invite['CoInvite']['invitation']),
+            $invite['CoInvite']['invitation'], $slug ),
          array('class' => 'cancelbutton')
        );
      }
 
-    }
+  }
