@@ -106,6 +106,7 @@ class HCConfirmersController extends StandardController {
     // (If you want to use the default confirmation buttons, you need to set $invite
     // and $co_enrollment_flow.) 
 
+    $logPrefix = "HCConfirmersController reply ";
     $args = array();
     $args['conditions']['CoInvite.invitation'] = $inviteid;
     $args['contain'] = array('CoPetition', 'EmailAddress');
@@ -165,6 +166,16 @@ class HCConfirmersController extends StandardController {
 
     }
 
+    $errorInfo = array (
+        'Petition ID:' . $invite['CoPetition']['id'],
+        'Email:' . $invitee['CoInvite']['mail'],
+        $emailVerify['exists'] ? 'Email Exists:true' : 'Email Exists:false',
+        'Enrollment Flow:' . $enrollmentFlow['CoEnrollmentFlow']['name'],
+        empty($user_societies) ? 'User Societies:NONE' : 'User Societies:' . implode(',', $user_societies),
+    );
+
+    $this->log($logPrefix . implode(' - ', $errorInfo));
+
   }
 
   public function searchByEmail( $email ) {
@@ -202,8 +213,7 @@ class HCConfirmersController extends StandardController {
         $args['conditions']['OrgIdentitySourceRecord.sorid'] = $key;
         $args['contain'] = array('OrgIdentity');
 
-        $ret[ $s['OrgIdentitySource']['id'] ][$key] =
-          $this->OrgIdentitySourceRecord->find('first', $args);
+        $ret[ $s['OrgIdentitySource']['id'] ][$key] = $this->OrgIdentitySourceRecord->find('first', $args);
 
         // Append the source record retrieved from the backend
         $ret[ $s['OrgIdentitySource']['id'] ][$key]['OrgIdentitySourceData'] = $c;
@@ -212,13 +222,13 @@ class HCConfirmersController extends StandardController {
         $ret[ $s['OrgIdentitySource']['id'] ][$key]['OrgIdentitySource'] = $s['OrgIdentitySource'];
 
         if( count( explode( '_', $ret[$s['OrgIdentitySource']['id']][$key]["OrgIdentitySource"]["description"] ) ) > 1 ) {
-        $society = explode( '_', $ret[$s['OrgIdentitySource']['id']][$key]["OrgIdentitySource"]["description"] );
-} else {
-        $society = explode( ' ', $ret[$s['OrgIdentitySource']['id']][$key]["OrgIdentitySource"]["description"] );
-}
+          $society = explode( '_', $ret[$s['OrgIdentitySource']['id']][$key]["OrgIdentitySource"]["description"] );
+        } else {
+          $society = explode( ' ', $ret[$s['OrgIdentitySource']['id']][$key]["OrgIdentitySource"]["description"] );
+        }
 
         if( count( $society ) > 1 ) {
-           $society_list[] = $society[0];
+          $society_list[] = $society[0];
         }
 
       }
@@ -268,30 +278,32 @@ class HCConfirmersController extends StandardController {
   }
 
   public function decline_petition( $inviteid ) {
-    
+
+    $logPrefix = "HCConfirmersController decline_petition ";
     $args = array();
     $args['conditions']['CoInvite.invitation'] = $inviteid;
     $args['contain'] = array('CoPetition', 'EmailAddress');
 
     $invite = $this->CoInvite->find('first', $args);
 
+    $this->log($logPrefix . 'Petition ID:' . $invite['CoPetition']['id'] . ' - Redirect to:' . $this->params['pass'][1]);
+
     try {
         $this->CoInvite->processReply( $inviteid, false );
         $this->CoPetition->updateStatus( $invite['CoPetition']['id'], StatusEnum::Declined, $invite['CoInvite']['co_person_id'] );
         $this->CoPerson->recalculateStatus( $invite['CoInvite']['co_person_id'] );
 
-$current_society_id = array_search( $this->params['pass'][1], $this->societies );
+        $current_society_id = array_search( $this->params['pass'][1], $this->societies );
 
- if( $this->params['pass'][1] == 'remind-me' ) {
+        if( $this->params['pass'][1] == 'remind-me' ) {
             $this->redirect('https://' . constant('HC_DOMAIN') . '/remind-me' );
-        } else if ( isset( $this->params['pass'][1] ) && $this->params['pass'][1] == 'HC' ) {
-               $this->redirect( array( 'plugin' => null, 'controller' => 'co_petitions', 'action' => 'start', 'coef:158', 'done:core' ) );
-        } else if( $this->params['pass'][1] !== 'HC' && in_array( $this->params['pass'][1], $this->societies ) == true ) {
-              $this->redirect( array( 'plugin' => null, 'controller' => 'co_petitions', 'action' => 'start', 'coef:' . $current_society_id ) );
+        } else if( in_array( $this->params['pass'][1], $this->societies ) == true ) {
+            $this->redirect( array( 'plugin' => null, 'controller' => 'co_petitions', 'action' => 'start', 'coef:' . $current_society_id ) );
         } else if ( $this->params['pass'][1] == 'commons' )  {
             $this->redirect('https://' . constant('HC_DOMAIN') );
+        } else {
+            $this->redirect('https://' . constant('HC_DOMAIN') ); //Have to go somewhere
         }
-
     } catch(Exception $e) {
         echo $e->getMessage();
     }
