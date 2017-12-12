@@ -41,7 +41,7 @@ if( $current_enrollment_flow_cou !== 'HC' ) :
 //var_dump( $user_societies );
  ?>
 
-<?php if( $email_verify['exists'] == true && in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ) : ?>
+<?php if( $email_verify['exists'] == true ) : ?>
 <div class="enrollment_flow_msg_dupe">
 <p>This e-mail is already associated with a <em>Humanities Commons</em> account. Forgotten how you log in? Click the Remind Me button below.</p>
 <?php  else : ?>

@@ -32,7 +32,7 @@ class HCConfirmersController extends StandardController {
   // Class name, used by Cake
   public $name = "HCConfirmers";
  
-  public $uses = array('HCConfirmer.HCConfirmer', 'OrgIdentity', 'OrgIdentitySource', 'OrgIdentitySourceRecord','CoPetition', 'CoPerson', 'EmailAddress', 'CoEnrollmentFlow', 'CoInvite' );
+  public $uses = array('HCConfirmer.HCConfirmer', 'OrgIdentity', 'OrgIdentitySource', 'OrgIdentitySourceRecord','CoPetition', 'CoPerson', 'EmailAddress', 'CoEnrollmentFlow', 'CoInvite', 'CoPetitionHistoryRecord' );
 
   public $societies = [
     '162' => 'AJS',
@@ -153,8 +153,8 @@ class HCConfirmersController extends StandardController {
 
       if(!$emailVerify['exists'] && ( false === $user_societies ||
         in_array($this->societies[$invite['CoPetition']['co_enrollment_flow_id']], array_merge($user_societies, array('HC')) ) ) ) {
-        $this->redirect( array( 'plugin' => null,
-                                'controller' => 'co_invites',
+	      $this->redirect( array( 'plugin' => null,
+				      'controller' => 'co_invites',
                                 'action' => (isset($enrollmentFlow['CoEnrollmentFlow']['require_authn']) &&
                                                    $enrollmentFlow['CoEnrollmentFlow']['require_authn'])
                                                    ? 'authconfirm' : 'confirm',
@@ -173,6 +173,8 @@ class HCConfirmersController extends StandardController {
         'Enrollment Flow:' . $enrollmentFlow['CoEnrollmentFlow']['name'],
         empty($user_societies) ? 'User Societies:NONE' : 'User Societies:' . implode(',', $user_societies),
     );
+
+    $this->CoPetitionHistoryRecord->record( $invite['CoPetition']['id'], $invite['CoPetition']['enrollee_co_person_id'], $invite['CoPetition']['status'], implode(' - ', $errorInfo) );
 
     $this->log($logPrefix . implode(' - ', $errorInfo));
 
@@ -285,6 +287,8 @@ class HCConfirmersController extends StandardController {
     $args['contain'] = array('CoPetition', 'EmailAddress');
 
     $invite = $this->CoInvite->find('first', $args);
+
+    $this->CoPetitionHistoryRecord->record( $invite['CoPetition']['id'], $invite['CoPetition']['enrollee_co_person_id'], $invite['CoPetition']['status'], $logPrefix . 'Petition ID:' . $invite['CoPetition']['id'] . ' - Redirect to:' . $this->params['pass'][1] );
 
     $this->log($logPrefix . 'Petition ID:' . $invite['CoPetition']['id'] . ' - Redirect to:' . $this->params['pass'][1]);
 
