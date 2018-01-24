@@ -34,31 +34,21 @@
   
   $verifyEmail = !empty($invite['CoInvite']['email_address_id']);
 
-//var_dump( APP  . "View" . DS . "CoInvites" . DS . "buttons.inc" );
+?>
 
-if( $current_enrollment_flow_cou !== 'HC' ) :
-//is_null( $user_societies )
-//var_dump( $user_societies );
- ?>
+<?php if( $current_enrollment_flow_cou !== 'HC' ) : ?>
 
-<?php if( $email_verify['exists'] == true && in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ) : ?>
+<?php if( $email_verify['exists'] == true ) : ?>
 <div class="enrollment_flow_msg_dupe">
-<p>This e-mail is already associated with a <em>Humanities Commons</em> account. Forgotten how you log in? Click the Remind Me button below.</p>
-<?php  else : ?>
+<?php  echo _txt('op.hcc.email.duplicate');
+    else : ?>
 <div class="enrollment_flow_msg">
-  <?php if( ! in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ) : ?>
-  <p>This e-mail is not associated with a current <?php echo $current_enrollment_flow_cou; ?> member account.
+  <?php if( ! is_null( $societies_list[$current_enrollment_flow_id]  ) && ! in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ) :
 
-<ul>
-<li> Register for <?php echo $current_enrollment_flow_cou; ?> Commons with another email</li>
-<li> Register for Humanities Commons (you can always contact us if you believe you should have access to <?php echo $current_enrollment_flow_cou; ?> Commons)</li>
-<li> Explore Humanities Commons</li>
-</ul> 
-</p>
-     <?php
-
-       print $this->Html->link(
-        'Register for ' . $current_enrollment_flow_cou . ' Commons',
+   echo sprintf( _txt('op.hcc.email.na'), $current_enrollment_flow_cou );
+ 
+      print $this->Html->link(
+         sprintf( _txt('op.hcc.decline.ret.society'), $current_enrollment_flow_cou ),
         array('plugin' => 'h_c_confirmer',
             'controller' => 'h_c_confirmers',
             'action' => 'decline_petition',
@@ -66,9 +56,8 @@ if( $current_enrollment_flow_cou !== 'HC' ) :
          array('class' => 'cancelbutton')
        );
 
-
         print $this->Html->link(
-        'Register for Humanities Commons',
+        _txt('op.hcc.register.hc'),
         array('plugin' => 'h_c_confirmer',
             'controller' => 'h_c_confirmers',
             'action' => 'decline_petition',
