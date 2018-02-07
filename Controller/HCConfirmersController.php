@@ -32,7 +32,7 @@ class HCConfirmersController extends StandardController {
   // Class name, used by Cake
   public $name = "HCConfirmers";
  
-  public $uses = array('HCConfirmer.HCConfirmer', 'OrgIdentity', 'OrgIdentitySource', 'OrgIdentitySourceRecord','CoPetition', 'CoPerson', 'EmailAddress', 'CoEnrollmentFlow', 'CoInvite', 'CoPetitionHistoryRecord' );
+  public $uses = array( 'CoPersonRole', 'Name', 'CoOrgIdentityLink', 'HCConfirmer.HCConfirmer', 'OrgIdentity', 'OrgIdentitySource', 'OrgIdentitySourceRecord','CoPetition', 'CoPerson', 'EmailAddress', 'CoEnrollmentFlow', 'CoInvite', 'CoPetitionHistoryRecord' );
 
   public $societies = [
     '162' => 'AJS',
@@ -58,10 +58,14 @@ class HCConfirmersController extends StandardController {
   function beforeFilter() {
     // Since we're overriding, we need to call the parent to run the authz check
     parent::beforeFilter();
-    
+
+    //$this->checkIfUserExists();
+
     // Allow invite handling to process without a login page
     $this->Auth->allow('decline_petition', 'reply');
+    $this->Auth->allow('trigger_merge_enrollment', 'reply');
   }
+
 
   /**
    * Authorization for this Controller, called by Auth component
@@ -133,7 +137,14 @@ class HCConfirmersController extends StandardController {
 
     $user_societies = $this->searchByEmail( $invitee['CoInvite']['mail'] );
 
-    $this->set('user_societies', $user_societies);
+var_dump( $user_societies );
+
+if( $user_societies['is_expired']['status'] == true ) {
+   $this->render('HCConfirmer.HCConfirmers/reply');
+   return;
+}
+
+    $this->set('user_societies', $user_societies['society_list']);
     $this->set('current_enrollment_flow_cou', $this->societies[$invite['CoPetition']['co_enrollment_flow_id']]);
     $this->set('current_enrollment_flow_id', $invite['CoPetition']['co_enrollment_flow_id'] );
     $this->set('societies_list', $this->societies );   
@@ -143,6 +154,59 @@ class HCConfirmersController extends StandardController {
     $this->set('hc_domain', constant('HC_DOMAIN') );
 
     $petition = $this->CoPetition->find('first', [ 'conditions' => [ 'CoPetition.enrollee_co_person_id' => $invite['CoInvite']['co_person_id'] ], 'recursive' => -1 ] );
+
+
+//echo "<pre>";
+//var_dump( $invitee );
+//echo "co person: <br>"; 
+
+//this is where all of the name results come from, some have a CoPerson with a status of null, others have SY and A
+//var_dump( $this->Name->find( 'all', ['conditions' => [ 'Name.given' => $invitee['PrimaryName']['given'], 'Name.family' => $invitee['PrimaryName']['family'] ] ] ) );
+
+$existingUser = null;
+$names = $this->Name->find( 'all', ['conditions' => [ 'Name.given' => $invitee['PrimaryName']['given'], 'Name.family' => $invitee['PrimaryName']['family'] ] ] );
+
+//if CoPerson status == A then the petition is active (as defined by PetitionStatusEnum)
+
+foreach( $names as $name ) {
+
+  if( ! is_null( $name['CoPerson']['status'] ) ) {
+
+    $identityLink = $this->CoOrgIdentityLink->find('first', ['conditions' => [ 'CoOrgIdentityLink.co_person_id' => $name['CoPerson']['id'] ]]);
+    //echo "<br/><br/>org_identity_link: <br/><br/>";
+   // var_dump( $identityLink );
+    //echo "<br/><br/>identity_link: <br/><br/>";
+    $orgIdentity = $this->OrgIdentity->find('first', ['conditions' => ['OrgIdentity.id' => $identityLink['OrgIdentity']['id']] ] );
+    //var_dump( $orgIdentity['Identifier'] );
+
+   // echo "<br/><br/>CoPerson: <br/><br/>";
+  // var_dump( $name['CoPerson']['status'] );
+
+   if( $name['CoPerson']['status'] == 'A' ) {
+      $existingUser[] = $name; 
+      $existingUser[] = $orgIdentity['Identifier'];
+      break;
+   }
+
+  }
+
+}
+
+
+if( ! is_null( $existingUser ) ) {
+
+   $this->set('existing_user', $existingUser);
+   $this->render('HCConfirmer.HCConfirmers/display_merge');
+
+   return;
+
+}
+
+//var_dump( $this->CoPerson->find( 'first', [ 'conditions' => [ 'CoPerson'  ] ] ) );
+
+//$orgid = $this->Name->find( 'first', ['conditions' => [ 'Name.given' => $invitee['PrimaryName']['given'], 'Name.family' => $invitee['PrimaryName']['family'] ] ] );
+
+//var_dump( $this->OrgIdentityLink->find('first', ['conditions' => ['OrgIdentityLink.org_identity_id' => $orgid['OrgIdentity']['id'] ]] ) );
 
     if(!empty($invite['CoPetition']['co_enrollment_flow_id'])) {
       $args = array();
@@ -164,7 +228,7 @@ class HCConfirmersController extends StandardController {
       $this->cur_enrollment_flow = $this->societies[$enrollmentFlow['CoEnrollmentFlow']['id']]; 
       $this->set('co_enrollment_flow', $enrollmentFlow);
 
-    }
+   }
 
     $errorInfo = array (
         'Petition ID:' . $invite['CoPetition']['id'],
@@ -193,11 +257,17 @@ class HCConfirmersController extends StandardController {
 
     $sources = $this->OrgIdentitySource->find('all', $args);
 
+/*echo "<pre>";
+var_dump( $sources );
+echo "</pre>";
+*/
     if(empty($sources)) {
       return false;
     }
 
     $society_list = array();
+    $is_expired = array();
+echo "<pre>";
 
     foreach($sources as $s) {
      if($s['OrgIdentitySource']['sync_mode'] == SyncModeEnum::Query) {
@@ -205,6 +275,21 @@ class HCConfirmersController extends StandardController {
        $candidates = $this->OrgIdentitySource->search($s['OrgIdentitySource']['id'], array('mail' => $email));
 
       foreach($candidates as $key => $c) {
+
+var_dump( $c );
+       
+       $is_expired['email'] = $c['EmailAddress'][0]['mail'];
+
+       //lets check if the current user is expired
+       if( array_key_exists('valid_through', $c['OrgIdentity']) && array_key_exists('valid_from', $c['OrgIdentity']) ) {
+
+	   if( ( date('Y-m-d', strtotime($c['OrgIdentity']['valid_through']) ) < date('Y-m-d') ) ) {
+                $is_expired['status'] = true;
+           }	   
+
+       } else {
+          $is_expired['status'] = false;
+       }
 
         // Key results by source ID in case different sources return the same keys
 
@@ -236,8 +321,13 @@ class HCConfirmersController extends StandardController {
       }
      }
     }
+echo "</pre>";
+    $data = array(
+        'society_list' => $society_list,
+        'is_expired' => $is_expired
+    );
 
-    return $society_list;
+    return $data;
 
   }
 
@@ -310,7 +400,35 @@ class HCConfirmersController extends StandardController {
         }
     } catch(Exception $e) {
         echo $e->getMessage();
-    }
+     }
+
+  }
+
+  function trigger_merge_enrollment( $peition_id  ) {
+
+      //grab orgidentity of original user and link it to the current user petition after click for confirmation of merge
+      $this->CoPeition->relinkOrgIdentity( $peition_id, $orig_org_id, $co_person_id_orig, 'merge');
+      echo "test";
+      //redirect to HC?
+
+  }
+
+  function checkIfUserExists() {
+
+//$uses = array('HCConfirmer.HCConfirmer', 'OrgIdentity', 'OrgIdentitySource', 'OrgIdentitySourceRecord','CoPetition', 'CoPerson', 'EmailAddress', 'CoEnrollmentFlow', 'CoInvite', 'CoPetitionHistoryRecord' );
+
+
+
+    echo "test";
+
+echo "<pre>";
+
+
+
+echo "<pre>";
+
+//$this->render('HCConfirmer.HCConfirmers/display_merge');
+    die();
 
   }
 
