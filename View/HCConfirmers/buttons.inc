@@ -84,7 +84,7 @@
            $invite['CoInvite']['invitation'], 'commons'),
          array('class' => 'cancelbutton')
        );
-
+ 
      //'https://' . $societies_list[$current_enrollment_flow_id] . '.' . constant('HC_DOMAIN'),
      } else if( $current_enrollment_flow_cou == 'HC' && $email_verify['exists'] == true ||
  $current_enrollment_flow_cou != 'HC' && $email_verify['exists'] == true ) {
