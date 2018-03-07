@@ -47,6 +47,8 @@ class HCConfirmersController extends StandardController {
 
   public $cur_enrollment_flow;
 
+  public $expired_data = array();
+
   /**
    * Callback before other controller methods are invoked or views are rendered.
    * - postcondition: Auth component is configured 
@@ -131,7 +133,14 @@ class HCConfirmersController extends StandardController {
       $this->set('duplicate_email', '0');
     }
 
-    $user_societies = $this->searchByEmail( $invitee['CoInvite']['mail'] );
+    $user_societies = $this->searchByEmail( $invitee['CoInvite']['mail'], $invite['CoPetition']['co_enrollment_flow_id'] );
+
+    //if the current society is not in the $user_societies array, then the user is expired
+    if( ! empty( $this->expired_data ) && $this->expired_data['status'] == true ) {
+	$this->set('user_expired', true);
+    } else {
+	$this->set('user_expired', false);
+    }
 
     $this->set('user_societies', $user_societies);
     $this->set('current_enrollment_flow_cou', $this->societies[$invite['CoPetition']['co_enrollment_flow_id']]);
@@ -180,7 +189,7 @@ class HCConfirmersController extends StandardController {
 
   }
 
-  public function searchByEmail( $email ) {
+  public function searchByEmail( $email, $current_ef_id ) {
 
     $ret = array();
 
@@ -198,13 +207,21 @@ class HCConfirmersController extends StandardController {
     }
 
     $society_list = array();
+    $is_expired = array();
+    $new_expired = array();
 
     foreach($sources as $s) {
+
+try {
+
      if($s['OrgIdentitySource']['sync_mode'] == SyncModeEnum::Query) {
        //$candidates = $this->OrgIdentitySource->find($s['OrgIdentitySource']['id'], array('mail' => $email));
        $candidates = $this->OrgIdentitySource->search($s['OrgIdentitySource']['id'], array('mail' => $email));
 
       foreach($candidates as $key => $c) {
+
+	//lets set the user's email that expired into this array
+        $is_expired['email'] = $c['EmailAddress'][0]['mail'];
 
         // Key results by source ID in case different sources return the same keys
 
@@ -223,22 +240,96 @@ class HCConfirmersController extends StandardController {
         // And the source info itself
         $ret[ $s['OrgIdentitySource']['id'] ][$key]['OrgIdentitySource'] = $s['OrgIdentitySource'];
 
+//var_dump( $s['OrgIdentitySource']['co_pipeline_id'] );
+//var_dump( $this->CoPipeline->find('first', array('conditions' => array('CoPipeline.co_pipeline_id' => $s['OrgIdentitySource']['co_pipeline_id'])) ) );
+
         if( count( explode( '_', $ret[$s['OrgIdentitySource']['id']][$key]["OrgIdentitySource"]["description"] ) ) > 1 ) {
           $society = explode( '_', $ret[$s['OrgIdentitySource']['id']][$key]["OrgIdentitySource"]["description"] );
         } else {
           $society = explode( ' ', $ret[$s['OrgIdentitySource']['id']][$key]["OrgIdentitySource"]["description"] );
         }
 
-        if( count( $society ) > 1 ) {
+	//lets check if the current user is expired and belongs to the MLA enrollment flow
+	if( $this->societies[$current_ef_id] == 'MLA' ) {
+
+		$detail_record = $this->OrgIdentitySource->retrieve($s['OrgIdentitySource']['id'], $key);
+
+		$is_expired = $this->calculate_expiration( $detail_record, $society, $this->societies[$current_ef_id] );
+
+	} elseif ( $this->societies[$current_ef_id] != 'HC' ) {
+
+		$is_expired = $this->calculate_expiration( $c, $society, $this->societies[$current_ef_id] );	
+
+	}
+
+	//lets only add the societies that are not expired into the list
+        if( count( $society ) > 1 && array_key_exists($society[0], $is_expired) == false ) {
           $society_list[] = $society[0];
         }
 
-      }
+       }
      }
+
+} catch( RuntimeException $e ) { }
     }
 
-    return $society_list;
+	return $society_list;
 
+  }
+
+/**
+ * Gets data and determines wether the user's account expired
+ * 
+ * @param  array $org_arr       array from OrgIdentitySource query
+ * @param  array $user_society  array from explode that contains societies that the user belongs to
+ * @param  string $cur_ef	current enrollment flow the user is in 
+ *
+ * @return array $is_expired    final data array to use that contains expired user data and society data
+ */
+  public function calculate_expiration( $org_arr, $user_society, $cur_ef ) {
+
+    $expired = array();
+
+    if( array_key_exists( 'orgidentity', $org_arr ) ) {
+	
+	//checks if the current user is expired through retrieve method in OrgIdentitySource model
+	if( array_key_exists('valid_through', $org_arr['orgidentity']['OrgIdentity']) && !is_null( $org_arr['orgidentity']['OrgIdentity']['valid_through'] ) ) {
+
+		    if( ( date('Y-m-d', strtotime( $org_arr['orgidentity']['OrgIdentity']['valid_through']) ) < date('Y-m-d') ) ) {
+			 if( $user_society[0] == $cur_ef ) {
+			 	$expired[$user_society[0]]['status'] = true;
+				$this->expired_data = array('society' => $cur_ef, 'status' => 'true');  
+			 }
+		     }
+
+		} else {
+		    $this->expired_data = array('society' => false, 'status' => false);
+		    $expired[$user_society[0]]['status'] = false;
+		}
+
+     } else {
+       
+	//lets check if the current user is expired
+        if( array_key_exists('valid_through', $org_arr['OrgIdentity']) && !is_null( $org_arr['OrgIdentity']['valid_through'] ) ) {
+
+            if( ( date('Y-m-d', strtotime($org_arr['OrgIdentity']['valid_through']) ) < date('Y-m-d') ) ) {
+		 if( $user_society[0] == $cur_ef ) {
+		     $expired[$user_society[0]]['status'] = true;
+		     $this->expired_data = array('society' => $cur_ef, 'status' => 'true');
+		 }
+             }
+
+        } else {
+	    $this->expired_data = array('society' => false, 'status' => false);
+            $expired[$user_society[0]]['status'] = false;
+        }
+
+
+
+     }
+
+     return $expired;
+ 
   }
 
  /**
