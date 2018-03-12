@@ -208,16 +208,14 @@ class HCConfirmersController extends StandardController {
 
     $society_list = array();
     $is_expired = array();
-    $new_expired = array();
 
     foreach($sources as $s) {
 
-try {
-
      if($s['OrgIdentitySource']['sync_mode'] == SyncModeEnum::Query) {
        //$candidates = $this->OrgIdentitySource->find($s['OrgIdentitySource']['id'], array('mail' => $email));
-       $candidates = $this->OrgIdentitySource->search($s['OrgIdentitySource']['id'], array('mail' => $email));
 
+      try {
+      $candidates = $this->OrgIdentitySource->search($s['OrgIdentitySource']['id'], array('mail' => $email));
       foreach($candidates as $key => $c) {
 
 	//lets set the user's email that expired into this array
@@ -263,16 +261,15 @@ try {
 	}
 
 	//lets only add the societies that are not expired into the list
-        if( count( $society ) > 1 && array_key_exists($society[0], $is_expired) == false ) {
+        if( count( $society ) > 1 && array_key_exists($society[0], $is_expired) == false || $this->expired_data['status'] == false ) { 
           $society_list[] = $society[0];
         }
 
        }
+     } catch( RuntimeException $e ) {
      }
-
-} catch( RuntimeException $e ) { }
     }
-
+   }
 	return $society_list;
 
   }
