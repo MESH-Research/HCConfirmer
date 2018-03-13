@@ -43,7 +43,30 @@
 <?php  echo _txt('op.hcc.email.duplicate');
     else : ?>
 <div class="enrollment_flow_msg">
-  <?php if( ! is_null( $societies_list[$current_enrollment_flow_id]  ) && ! in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) ) :
+  <?php if( $current_enrollment_flow_cou != 'HC' && $user_expired == true ) {
+      echo sprintf( _txt('op.hcc.email.exp'), $current_enrollment_flow_cou );
+
+      print $this->Html->link(
+         sprintf( _txt('op.hcc.decline.ret.society'), $current_enrollment_flow_cou ),
+        array('plugin' => 'h_c_confirmer',
+            'controller' => 'h_c_confirmers',
+            'action' => 'decline_petition',
+           $invite['CoInvite']['invitation'], $current_enrollment_flow_cou),
+         array('class' => 'cancelbutton')
+       );
+
+        print $this->Html->link(
+        _txt('op.hcc.register.hc'),
+        array('plugin' => 'h_c_confirmer',
+            'controller' => 'h_c_confirmers',
+            'action' => 'decline_petition',
+           $invite['CoInvite']['invitation'], 'HC'),
+         array('class' => 'cancelbutton')
+       );
+
+    }
+  ?>
+  <?php if( ! is_null( $societies_list[$current_enrollment_flow_id]  ) && ! in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) && $user_expired == false ) :
 
    echo sprintf( _txt('op.hcc.email.na'), $current_enrollment_flow_cou );
  

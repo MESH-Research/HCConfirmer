@@ -42,4 +42,10 @@ $cm_h_c_confirmer_texts['en_US'] = array(
                 <li>Explore Humanities Commons</li>
         </ul>
 </p>',
+'op.hcc.email.exp' => '<p>The account associated with this e-mail is not a currently active %1$s member account.
+        <ul>
+                <li> Register for %1$s Commons with another email</li>
+                <li> Register for Humanities Commons (you can always contact us if you believe you should have access to %1$s Commons)</li>
+        </ul>
+</p>'
 );
