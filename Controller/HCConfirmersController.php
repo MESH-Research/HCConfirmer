@@ -32,7 +32,7 @@ class HCConfirmersController extends StandardController {
   // Class name, used by Cake
   public $name = "HCConfirmers";
  
-  public $uses = array('HCConfirmer.HCConfirmer', 'OrgIdentity', 'OrgIdentitySource', 'OrgIdentitySourceRecord','CoPetition', 'CoPerson', 'EmailAddress', 'CoEnrollmentFlow', 'CoInvite', 'CoPetitionHistoryRecord' );
+  public $uses = array('HCConfirmer.HCConfirmer', 'OrgIdentity', 'OrgIdentitySource', 'OrgIdentitySourceRecord','CoPetition', 'CoPerson', 'EmailAddress', 'CoEnrollmentFlow', 'CoInvite', 'CoPetitionHistoryRecord', 'Name', 'CoOrgIdentityLink' );
 
   public $societies = [
     '162' => 'AJS',
@@ -63,6 +63,7 @@ class HCConfirmersController extends StandardController {
     
     // Allow invite handling to process without a login page
     $this->Auth->allow('decline_petition', 'reply');
+    $this->Auth->allow('trigger_merge_enrollment', 'reply');
   }
 
   /**
@@ -152,6 +153,53 @@ class HCConfirmersController extends StandardController {
     $this->set('hc_domain', constant('HC_DOMAIN') );
 
     $petition = $this->CoPetition->find('first', [ 'conditions' => [ 'CoPetition.enrollee_co_person_id' => $invite['CoInvite']['co_person_id'] ], 'recursive' => -1 ] );
+
+    $existingUser = null;
+    $names = $this->Name->find( 'all', ['conditions' => [ 'Name.given' => $invitee['PrimaryName']['given'], 'Name.family' => $invitee['PrimaryName']['family'] ] ] );
+
+   //echo "<pre>";
+   foreach( $names as $name ) {
+           
+	$identityLink = $this->CoOrgIdentityLink->find('first', ['conditions' => [ 'CoOrgIdentityLink.co_person_id' => $name['CoPerson']['id'] ]]);
+	
+	//this call filters out emails that belong to sphericalcowgroup and EmailAddresses that have a NULL co_person_id
+	//(some that come back were soft deleted and versioned but the co_person_id was set to null)	
+	$emails = $this->EmailAddress->find('first', ['conditions' => ['EmailAddress.co_person_id' => $name['CoPerson']['id'], array('NOT' => array( 'EmailAddress.mail LIKE' => '%sphericalcowgroup.com%' ) ), array( 'NOT' => array( 'EmailAddress.co_person_id' => 'NULL' ) ) ] ]);
+	
+	//some of the emails returned do not have EmailAddress as a key but return null.. so lets check if its set
+	if( isset( $emails['EmailAddress'] ) ) {
+	    $collectedEmails[] = ['name' => $name['Name']['honorific'] . ' ' . $name['Name']['given'] . ' ' . $name['Name']['family'] . ' ' . $name['Name']['suffix'], 'email' => $emails['EmailAddress']['mail'] ];
+	}
+
+	if( isset( $identityLink['OrgIdentity'] ) ) {
+	   $orgIdentity = $this->OrgIdentity->find('first', ['conditions' => ['OrgIdentity.id' => $identityLink['OrgIdentity']['id']] ] );
+	}
+	
+        if( ! is_null( $name['CoPerson']['status'] ) && $name['CoPerson']['status'] == 'A' ) {
+	    $existingUser = $name;
+	}
+
+	if( ! is_null( $name['CoPerson']['status'] ) && $name['CoPerson']['status'] == 'PC' ) {
+	    $newUser = $name;
+	}
+
+   }
+
+    //since DISTINCT does not work on the EmailAddress find method, we then have to sort through the raw data ourselves and remove duplicates
+   $uniqueEmails = array_unique( $collectedEmails, SORT_REGULAR );
+   //var_dump( $uniqueEmails );
+
+   //we only want the new view to render if there is more than one item in the $uniqueEmails array
+   //which means there is more than one object with the same name that is not versioned or null
+   if( count( $uniqueEmails ) > 1 ) {
+	 
+	$this->set('unique_emails', $uniqueEmails);
+	$this->render('HCConfirmer.HCConfirmers/display_duplicate_user');
+	
+	return;
+	
+   }
+   //echo "</pre>";
 
     if(!empty($invite['CoPetition']['co_enrollment_flow_id'])) {
       $args = array();

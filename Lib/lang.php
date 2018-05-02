@@ -35,6 +35,7 @@ $cm_h_c_confirmer_texts['en_US'] = array(
   'op.hcc.decline.ret.society' => 'Register for %s Commons',
   'op.hcc.register.hc' => 'Register for Humanities Commons',
   'op.hcc.email.duplicate' => 'This e-mail is already associated with a <em>Humanities Commons</em> account. Forgotten how you log in? Click the Remind Me button below.',
+  'op.hcc.name.duplicate' => 'We have found these names that match associated %s accounts: ',
   'op.hcc.email.na' => '<p>This e-mail is not associated with a current %1$s member account.
         <ul>
                 <li> Register for %1$s Commons with another email</li>
