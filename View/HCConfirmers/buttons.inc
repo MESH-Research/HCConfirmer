@@ -73,8 +73,19 @@
     ); 
 
   }
+    if( $current_enrollment_flow_cou == 'UP' && $email_verify['exists'] == false ) {
+        print $this->Html->link(
+        _txt('op.hcc.ret.up'),
+        array('plugin' => 'h_c_confirmer',
+            'controller' => 'h_c_confirmers',
+            'action' => 'decline_petition',
+           $invite['CoInvite']['invitation'], 'up'),
+         array('class' => 'cancelbutton')
+       );
 
-    if( $current_enrollment_flow_cou != 'HC' && $email_verify['exists'] == false ) {
+    }
+
+    if( $current_enrollment_flow_cou != 'HC' && $current_enrollment_flow_cou != 'UP' && $email_verify['exists'] == false ) {
 
        print $this->Html->link(
         _txt('op.hcc.ret.hc'),

@@ -245,8 +245,8 @@ class HCConfirmersController extends StandardController {
           $society = explode( '_', $ret[$s['OrgIdentitySource']['id']][$key]["OrgIdentitySource"]["description"] );
         } else {
           $society = explode( ' ', $ret[$s['OrgIdentitySource']['id']][$key]["OrgIdentitySource"]["description"] );
-        }
-
+	}
+	
 	//lets check if the current user is expired and belongs to the MLA enrollment flow
 	if( $this->societies[$current_ef_id] == 'MLA' ) {
 
@@ -269,7 +269,7 @@ class HCConfirmersController extends StandardController {
      } catch( RuntimeException $e ) {
      }
     }
-   }
+    }
 	return $society_list;
 
   }
@@ -393,6 +393,8 @@ class HCConfirmersController extends StandardController {
             $this->redirect( array( 'plugin' => null, 'controller' => 'co_petitions', 'action' => 'start', 'coef:' . $current_society_id ) );
         } else if ( $this->params['pass'][1] == 'commons' )  {
             $this->redirect('https://' . constant('HC_DOMAIN') );
+	} else if( $this->params['pass'][1] == 'up' ) {
+	    $this->redirect('https://up.' . constant('HC_DOMAIN') ); 
         } else {
             $this->redirect('https://' . constant('HC_DOMAIN') ); //Have to go somewhere
         }

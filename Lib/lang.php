@@ -30,7 +30,8 @@ global $cm_lang, $cm_texts;
 
 $cm_h_c_confirmer_texts['en_US'] = array(
   //HCConfirmer
-  'op.hcc.ret.hc'     => 'Return to Humanities Commons',
+  'op.hcc.ret.hc'   => 'Return to Humanities Commons',
+  'op.hcc.ret.up'   => 'Continue browsing UP',
   'op.hcc.decline.ret.remind' => 'Remind Me',
   'op.hcc.decline.ret.society' => 'Register for %s Commons',
   'op.hcc.register.hc' => 'Register for Humanities Commons',
@@ -47,5 +48,6 @@ $cm_h_c_confirmer_texts['en_US'] = array(
                 <li> Register for %1$s Commons with another email</li>
                 <li> Register for Humanities Commons (you can always contact us if you believe you should have access to %1$s Commons)</li>
         </ul>
-</p>'
+</p>',
+  'op.hcc.email.na.up' => '<p>Sample text</p>'
 );
