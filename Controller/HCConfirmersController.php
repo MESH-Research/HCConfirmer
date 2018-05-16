@@ -32,7 +32,7 @@ class HCConfirmersController extends StandardController {
   // Class name, used by Cake
   public $name = "HCConfirmers";
  
-  public $uses = array('HCConfirmer.HCConfirmer', 'OrgIdentity', 'OrgIdentitySource', 'OrgIdentitySourceRecord','CoPetition', 'CoPerson', 'EmailAddress', 'CoEnrollmentFlow', 'CoInvite', 'CoPetitionHistoryRecord', 'Name', 'CoOrgIdentityLink' );
+  public $uses = array('HCConfirmer.HCConfirmer', 'Identifier', 'OrgIdentity', 'OrgIdentitySource', 'OrgIdentitySourceRecord','CoPetition', 'CoPerson', 'EmailAddress', 'CoEnrollmentFlow', 'CoInvite', 'CoPetitionHistoryRecord', 'Name', 'CoOrgIdentityLink' );
 
   public $societies = [
     '162' => 'AJS',
@@ -157,18 +157,32 @@ class HCConfirmersController extends StandardController {
     $existingUser = null;
     $names = $this->Name->find( 'all', ['conditions' => [ 'Name.given' => $invitee['PrimaryName']['given'], 'Name.family' => $invitee['PrimaryName']['family'] ] ] );
 
-   //echo "<pre>";
+//   echo "<pre>";
+//   var_dump( $this->expired_data );
    foreach( $names as $name ) {
            
-	$identityLink = $this->CoOrgIdentityLink->find('first', ['conditions' => [ 'CoOrgIdentityLink.co_person_id' => $name['CoPerson']['id'] ]]);
+	//$identityLink = $this->CoOrgIdentityLink->find('first', ['conditions' => [ 'CoOrgIdentityLink.co_person_id' => $name['CoPerson']['id'] ]]);
+
+	//var_dump( $identityLink );
+	//$wpid = $this->Identifier->find('first', [ 'conditions' => [ 'Identifier.co_person_id' => $name['CoPerson']['id'], 'Identifier.type' => 'wpid' ] ]); 
 	
+	//var_dump( $wpid );
 	//this call filters out emails that belong to sphericalcowgroup and EmailAddresses that have a NULL co_person_id
 	//(some that come back were soft deleted and versioned but the co_person_id was set to null)	
 	$emails = $this->EmailAddress->find('first', ['conditions' => ['EmailAddress.co_person_id' => $name['CoPerson']['id'], array('NOT' => array( 'EmailAddress.mail LIKE' => '%sphericalcowgroup.com%' ) ), array( 'NOT' => array( 'EmailAddress.co_person_id' => 'NULL' ) ) ] ]);
-	
+
+	if( !is_null( $name['CoPerson']['id'] ) ) {
+
+	    $uid = $this->Identifier->find('first', ['conditions' => ['Identifier.co_person_id' => $name['CoPerson']['id']] ]);
+	    if( $uid['Identifier']['type'] == 'wpid' && array_key_exists('identifier', $uid['Identifier']) && array_key_exists('Identifier', $uid) ) {
+	    	$username = $uid['Identifier']['identifier'];
+	    }
+
+	}
+
 	//some of the emails returned do not have EmailAddress as a key but return null.. so lets check if its set
 	if( isset( $emails['EmailAddress'] ) ) {
-	    $collectedEmails[] = ['name' => $name['Name']['honorific'] . ' ' . $name['Name']['given'] . ' ' . $name['Name']['family'] . ' ' . $name['Name']['suffix'], 'email' => $emails['EmailAddress']['mail'] ];
+	    $collectedEmails[] = ['name' => $name['Name']['honorific'] . ' ' . $name['Name']['given'] . ' ' . $name['Name']['family'] . ' ' . $name['Name']['suffix'], 'email' => $emails['EmailAddress']['mail'], 'username' => $username ];
 	}
 
 	if( isset( $identityLink['OrgIdentity'] ) ) {
@@ -182,12 +196,17 @@ class HCConfirmersController extends StandardController {
 	if( ! is_null( $name['CoPerson']['status'] ) && $name['CoPerson']['status'] == 'PC' ) {
 	    $newUser = $name;
 	}
+	if( !is_null( $name['CoPerson']['id'] ) ) {
+echo "<pre>";
+	var_dump( $this->Identifier->find('first', ['conditions' => ['Identifier.co_person_id' => $name['CoPerson']['id']] ]) );
+echo "</pre>";
+	}
 
    }
 
     //since DISTINCT does not work on the EmailAddress find method, we then have to sort through the raw data ourselves and remove duplicates
    $uniqueEmails = array_unique( $collectedEmails, SORT_REGULAR );
-   //var_dump( $uniqueEmails );
+   var_dump( $uniqueEmails );
 
    //we only want the new view to render if there is more than one item in the $uniqueEmails array
    //which means there is more than one object with the same name that is not versioned or null
@@ -199,7 +218,7 @@ class HCConfirmersController extends StandardController {
 	return;
 	
    }
-   //echo "</pre>";
+  // echo "</pre>";
 
     if(!empty($invite['CoPetition']['co_enrollment_flow_id'])) {
       $args = array();
@@ -260,12 +279,15 @@ class HCConfirmersController extends StandardController {
     foreach($sources as $s) {
 
      if($s['OrgIdentitySource']['sync_mode'] == SyncModeEnum::Query) {
-       //$candidates = $this->OrgIdentitySource->find($s['OrgIdentitySource']['id'], array('mail' => $email));
-
+       //$candidates2 = $this->OrgIdentitySource->find('all', array('conditions' => ['OrgIdentitySource.org_identity_source_id' => $s['OrgIdentitySource']['id']])); 
       try {
+	
       $candidates = $this->OrgIdentitySource->search($s['OrgIdentitySource']['id'], array('mail' => $email));
-      foreach($candidates as $key => $c) {
 
+      foreach($candidates as $key => $c) {
+	 echo "<pre>";     
+	 //var_dump( $s );
+	echo "</pre>";
 	//lets set the user's email that expired into this array
         $is_expired['email'] = $c['EmailAddress'][0]['mail'];
 
@@ -353,7 +375,7 @@ class HCConfirmersController extends StandardController {
 		}
 
      } else {
-       
+      //var_dump( $org_arr['OrgIdentity'] ); 
 	//lets check if the current user is expired
         if( array_key_exists('valid_through', $org_arr['OrgIdentity']) && !is_null( $org_arr['OrgIdentity']['valid_through'] ) ) {
 
