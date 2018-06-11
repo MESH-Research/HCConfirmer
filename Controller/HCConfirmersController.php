@@ -32,7 +32,7 @@ class HCConfirmersController extends StandardController {
   // Class name, used by Cake
   public $name = "HCConfirmers";
  
-  public $uses = array('HCConfirmer.HCConfirmer', 'Identifier', 'OrgIdentity', 'OrgIdentitySource', 'OrgIdentitySourceRecord','CoPetition', 'CoPerson', 'EmailAddress', 'CoEnrollmentFlow', 'CoInvite', 'CoPetitionHistoryRecord', 'Name', 'CoOrgIdentityLink' );
+  public $uses = array('HCConfirmer.HCConfirmer', 'CoEnrollmentSource', 'Identifier', 'OrgIdentity', 'OrgIdentitySource', 'OrgIdentitySourceRecord','CoPetition', 'CoPerson', 'EmailAddress', 'CoEnrollmentFlow', 'CoInvite', 'CoPetitionHistoryRecord', 'Name', 'CoOrgIdentityLink' );
 
   public $societies = [
     '162' => 'AJS',
@@ -156,17 +156,13 @@ class HCConfirmersController extends StandardController {
 
     $existingUser = null;
     $names = $this->Name->find( 'all', ['conditions' => [ 'Name.given' => $invitee['PrimaryName']['given'], 'Name.family' => $invitee['PrimaryName']['family'] ] ] );
+    $username = false;
 
-//   echo "<pre>";
-//   var_dump( $this->expired_data );
    foreach( $names as $name ) {
            
 	//$identityLink = $this->CoOrgIdentityLink->find('first', ['conditions' => [ 'CoOrgIdentityLink.co_person_id' => $name['CoPerson']['id'] ]]);
-
-	//var_dump( $identityLink );
 	//$wpid = $this->Identifier->find('first', [ 'conditions' => [ 'Identifier.co_person_id' => $name['CoPerson']['id'], 'Identifier.type' => 'wpid' ] ]); 
-	
-	//var_dump( $wpid );
+
 	//this call filters out emails that belong to sphericalcowgroup and EmailAddresses that have a NULL co_person_id
 	//(some that come back were soft deleted and versioned but the co_person_id was set to null)	
 	$emails = $this->EmailAddress->find('first', ['conditions' => ['EmailAddress.co_person_id' => $name['CoPerson']['id'], array('NOT' => array( 'EmailAddress.mail LIKE' => '%sphericalcowgroup.com%' ) ), array( 'NOT' => array( 'EmailAddress.co_person_id' => 'NULL' ) ) ] ]);
@@ -174,7 +170,8 @@ class HCConfirmersController extends StandardController {
 	if( !is_null( $name['CoPerson']['id'] ) ) {
 
 	    $uid = $this->Identifier->find('first', ['conditions' => ['Identifier.co_person_id' => $name['CoPerson']['id']] ]);
-	    if( $uid['Identifier']['type'] == 'wpid' && array_key_exists('identifier', $uid['Identifier']) && array_key_exists('Identifier', $uid) ) {
+	   debug($uid); 
+	    if( $uid['Identifier']['type'] == 'wpid' && !empty( $uid ) ) {
 	    	$username = $uid['Identifier']['identifier'];
 	    }
 
@@ -196,17 +193,12 @@ class HCConfirmersController extends StandardController {
 	if( ! is_null( $name['CoPerson']['status'] ) && $name['CoPerson']['status'] == 'PC' ) {
 	    $newUser = $name;
 	}
-	if( !is_null( $name['CoPerson']['id'] ) ) {
-echo "<pre>";
-	var_dump( $this->Identifier->find('first', ['conditions' => ['Identifier.co_person_id' => $name['CoPerson']['id']] ]) );
-echo "</pre>";
-	}
 
    }
 
     //since DISTINCT does not work on the EmailAddress find method, we then have to sort through the raw data ourselves and remove duplicates
    $uniqueEmails = array_unique( $collectedEmails, SORT_REGULAR );
-   var_dump( $uniqueEmails );
+   //var_dump( $uniqueEmails );
 
    //we only want the new view to render if there is more than one item in the $uniqueEmails array
    //which means there is more than one object with the same name that is not versioned or null
@@ -218,7 +210,7 @@ echo "</pre>";
 	return;
 	
    }
-  // echo "</pre>";
+
 
     if(!empty($invite['CoPetition']['co_enrollment_flow_id'])) {
       $args = array();
@@ -259,15 +251,32 @@ echo "</pre>";
   public function searchByEmail( $email, $current_ef_id ) {
 
     $ret = array();
+    $enrollment_ids = [];	
+    $es = $this->CoEnrollmentSource->activeSources( $current_ef_id, EnrollmentOrgIdentityModeEnum::OISSearch );
+
+    //gets all ids of active OrgIdentitySources within enrollment flow 
+    foreach( $es as $enrollmentSource  ) {
+	
+	//debug( $enrollmentSource );    
+   	$enrollment_ids[] = $enrollmentSource['OrgIdentitySource']['id']; 
+   
+    }
+
+    //var_dump($enrollment_ids);
 
     // First we need to figure out what plugins we have available.
 
     $args = array();
     $args['conditions']['OrgIdentitySource.status'] = SuspendableStatusEnum::Active;
+    //$args['conditions']['OrgIdentitySource.org_identity_source_id'] = $enrollment_ids; 
+    $args['conditions']['OrgIdentitySource.org_identity_source_id IN'] = $enrollment_ids; //current ids of orgidentitysource
     $args['conditions']['OrgIdentitySource.co_id'] = 2;
     $args['contain'] = false;
 
     $sources = $this->OrgIdentitySource->find('all', $args);
+    $log = $this->OrgIdentitySource->getDataSource()->getLog(false, false);
+
+    //debug($log);
 
     if(empty($sources)) {
       return false;
@@ -277,17 +286,15 @@ echo "</pre>";
     $is_expired = array();
 
     foreach($sources as $s) {
-
-     if($s['OrgIdentitySource']['sync_mode'] == SyncModeEnum::Query) {
-       //$candidates2 = $this->OrgIdentitySource->find('all', array('conditions' => ['OrgIdentitySource.org_identity_source_id' => $s['OrgIdentitySource']['id']])); 
+       
+      if($s['OrgIdentitySource']['sync_mode'] == SyncModeEnum::Query) { 
+	     
       try {
 	
       $candidates = $this->OrgIdentitySource->search($s['OrgIdentitySource']['id'], array('mail' => $email));
 
       foreach($candidates as $key => $c) {
-	 echo "<pre>";     
-	 //var_dump( $s );
-	echo "</pre>";
+     
 	//lets set the user's email that expired into this array
         $is_expired['email'] = $c['EmailAddress'][0]['mail'];
 
@@ -308,8 +315,6 @@ echo "</pre>";
         // And the source info itself
         $ret[ $s['OrgIdentitySource']['id'] ][$key]['OrgIdentitySource'] = $s['OrgIdentitySource'];
 
-//var_dump( $s['OrgIdentitySource']['co_pipeline_id'] );
-//var_dump( $this->CoPipeline->find('first', array('conditions' => array('CoPipeline.co_pipeline_id' => $s['OrgIdentitySource']['co_pipeline_id'])) ) );
 
         if( count( explode( '_', $ret[$s['OrgIdentitySource']['id']][$key]["OrgIdentitySource"]["description"] ) ) > 1 ) {
           $society = explode( '_', $ret[$s['OrgIdentitySource']['id']][$key]["OrgIdentitySource"]["description"] );

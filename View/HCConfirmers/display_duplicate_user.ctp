@@ -8,7 +8,7 @@
 
 <ul>
 <?php foreach( $unique_emails as $email ) : ?>
-<li><?php echo trim( $email['name'] ); ?></li>
+<li><?php echo trim( $email['name'] ) . ' (' . $email['username'] . ')'; ?></li>
 <?php endforeach; ?>
 </ul>
 <p>If you still want to proceed, click Create Account. If you forgot your account click Remind Me below.</p>
