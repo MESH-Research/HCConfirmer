@@ -54,7 +54,8 @@
            $invite['CoInvite']['invitation'], $current_enrollment_flow_cou),
          array('class' => 'cancelbutton')
        );
-
+       
+      if( $current_enrollment_flow_cou != 'UP' ) {
         print $this->Html->link(
         _txt('op.hcc.register.hc'),
         array('plugin' => 'h_c_confirmer',
@@ -62,14 +63,20 @@
             'action' => 'decline_petition',
            $invite['CoInvite']['invitation'], 'HC'),
          array('class' => 'cancelbutton')
-       );
+ );
+
+      }
+
 
     }
   ?>
   <?php if( ! is_null( $societies_list[$current_enrollment_flow_id]  ) && ! in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) && $user_expired == false ) :
+   if( $current_enrollment_flow_cou == 'UP' ) {
+	echo sprintf( _txt('op.hcc.email.na.up') );
+   } else {	
+        echo sprintf( _txt('op.hcc.email.na'), $current_enrollment_flow_cou );
+   }
 
-   echo sprintf( _txt('op.hcc.email.na'), $current_enrollment_flow_cou );
- 
       print $this->Html->link(
          sprintf( _txt('op.hcc.decline.ret.society'), $current_enrollment_flow_cou ),
         array('plugin' => 'h_c_confirmer',
@@ -79,6 +86,7 @@
          array('class' => 'cancelbutton')
        );
 
+	if( $current_enrollment_flow_cou != 'UP' ) {
         print $this->Html->link(
         _txt('op.hcc.register.hc'),
         array('plugin' => 'h_c_confirmer',
@@ -86,7 +94,8 @@
             'action' => 'decline_petition',
            $invite['CoInvite']['invitation'], 'HC'),
          array('class' => 'cancelbutton')
-       );
+ 	 );
+	}
 
    endif;
 
