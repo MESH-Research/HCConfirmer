@@ -170,8 +170,9 @@ class HCConfirmersController extends StandardController {
 	if( !is_null( $name['CoPerson']['id'] ) ) {
 
 	    $uid = $this->Identifier->find('first', ['conditions' => ['Identifier.co_person_id' => $name['CoPerson']['id']] ]);
-	   debug($uid); 
-	    if( $uid['Identifier']['type'] == 'wpid' && !empty( $uid ) ) {
+
+	    if( array_key_exists( 'Identifier', $uid ) && $uid['Identifier']['type'] == 'wpid' || !empty( $uid ) ) {
+
 	    	$username = $uid['Identifier']['identifier'];
 	    }
 
@@ -262,22 +263,17 @@ class HCConfirmersController extends StandardController {
    
     }
 
-    //var_dump($enrollment_ids);
-
     // First we need to figure out what plugins we have available.
 
     $args = array();
     $args['conditions']['OrgIdentitySource.status'] = SuspendableStatusEnum::Active;
-    //$args['conditions']['OrgIdentitySource.org_identity_source_id'] = $enrollment_ids; 
-    $args['conditions']['OrgIdentitySource.org_identity_source_id IN'] = $enrollment_ids; //current ids of orgidentitysource
+    $args['conditions']['OrgIdentitySource.id'] = $enrollment_ids; 
+    //$args['conditions']['OrgIdentitySource.org_identity_source_id IN'] = $enrollment_ids; //current ids of orgidentitysource
     $args['conditions']['OrgIdentitySource.co_id'] = 2;
     $args['contain'] = false;
 
     $sources = $this->OrgIdentitySource->find('all', $args);
-    $log = $this->OrgIdentitySource->getDataSource()->getLog(false, false);
-
-    //debug($log);
-
+    
     if(empty($sources)) {
       return false;
     }
