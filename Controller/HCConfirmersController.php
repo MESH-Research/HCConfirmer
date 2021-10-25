@@ -39,8 +39,25 @@ class HCConfirmersController extends StandardController {
     '164' => 'ASEEES',
     '166' => 'CAA',
     '158' => 'HC',
+    '606' => 'HC', //digiped
     '160' => 'MLA',
-    '389' => 'UP'
+    '389' => 'UP',
+    '604' => 'MSU',
+    '590' => 'ARLISNA',
+    '598' => 'SAH'
+  ];
+
+  public $bad_domains = [
+    'autorambler.ru',
+    'gmx.com',
+    'gmx.us',
+    'lenta.ru',
+    'list.ru',
+    'mail.com',
+    'myrambler.ru',
+    'rambler.ru',
+    'rambler.ua',
+    'ro.ru'
   ];
 
   public $duplicate_email = false;
@@ -212,11 +229,14 @@ class HCConfirmersController extends StandardController {
     foreach($sources as $s) {
 
      if($s['OrgIdentitySource']['sync_mode'] == SyncModeEnum::Query) {
-       //$candidates = $this->OrgIdentitySource->find($s['OrgIdentitySource']['id'], array('mail' => $email));
+       //$candidates = $this->OrgIdentitySource->find($s['OrgIdentitySource']['id'], array('mail' => $email)); throws memory error?
+    //$this->log('searchByEmail' . '1' . var_export($s['OrgIdentitySource'],true));
 
       try {
       $candidates = $this->OrgIdentitySource->search($s['OrgIdentitySource']['id'], array('mail' => $email));
+    //$this->log('searchByEmail' . '2' . var_export($candidates,true));
       foreach($candidates as $key => $c) {
+    //$this->log('searchByEmail' . '3' . 'foreach candidates...');
 
 	//lets set the user's email that expired into this array
         $is_expired['email'] = $c['EmailAddress'][0]['mail'];
@@ -270,6 +290,7 @@ class HCConfirmersController extends StandardController {
      }
     }
     }
+    //$this->log('searchByEmail' . '9' . var_export($society_list,true));
 	return $society_list;
 
   }
@@ -363,6 +384,16 @@ class HCConfirmersController extends StandardController {
       $emailData = ['exists' => false];
     }
 
+    foreach( $this->bad_domains as $bad_domain ) {
+      if ( false !== stripos( $email, '@' . $bad_domain ) ) {
+        $this->duplicate_email = true;
+        $emailData = [
+	  'exists' => true,
+	  'message' => 'We already have this email on file with <em>Humanities Commons</em>.',
+	  'hc_domain' => constant( 'HC_DOMAIN' )
+        ];
+      }
+    }
     return $emailData;
 
   }
