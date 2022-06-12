@@ -49,12 +49,17 @@ class HCConfirmersController extends StandardController {
 
   public $bad_domains = [
     'autorambler.ru',
+    'canfga.org',
+    'dkb3.com',
     'gmx.com',
     'gmx.us',
+    'huekieu.com',
     'lenta.ru',
+    'liepaia.com',
     'list.ru',
     'mail.com',
     'myrambler.ru',
+    'opentrash.com',
     'rambler.ru',
     'rambler.ua',
     'ro.ru'
@@ -142,7 +147,7 @@ class HCConfirmersController extends StandardController {
 
     //Enrollment flows that use EnvSource Org Identity Source will have verified emails
     //TODO might have to search for active Org Identities
-    $emailVerify = $this->checkEmailAvailability( $invitee['CoInvite']['mail'], $invite['CoPetition']['enrollee_org_identity_id'] );
+    $emailVerify = $this->checkEmailAvailability( $invitee['CoInvite']['mail'], $invite['CoPetition']['enrollee_org_identity_id'], $invite['CoPetition']['co_enrollment_flow_id'] );
 
     if( $this->duplicate_email == true ) {
       $this->set('duplicate_email', '1');
@@ -196,6 +201,7 @@ class HCConfirmersController extends StandardController {
         'Petition ID:' . $invite['CoPetition']['id'],
         'Email:' . $invitee['CoInvite']['mail'],
         $emailVerify['exists'] ? 'Email Exists:true' : 'Email Exists:false',
+	'Email Check Type:' . $emailVerify['check_type'],
         'Enrollment Flow:' . $enrollmentFlow['CoEnrollmentFlow']['name'],
         empty($user_societies) ? 'User Societies:NONE' : 'User Societies:' . implode(',', $user_societies),
     );
@@ -355,13 +361,15 @@ class HCConfirmersController extends StandardController {
  * 
  * @param  string $email        current email being used for CoInvite
  * @param  string $orgidentityid current org_identity_id being used for CoInvite
+ * @param  string $current_ef_id current CoInvite Enrollment Flow ID
  * @return array  $emailData    email data to be output with message if email exists and is verified
  */
-  public function checkEmailAvailability( $email, $orgidentityid ) {
+  public function checkEmailAvailability( $email, $orgidentityid, $current_ef_id ) {
 
    /*
     * Check if the email has been verified at any time in the past.
     */
+   $logPrefix = "HCConfirmersController checkEmailAvailability ";
    $args = array();
    $args['conditions']['EmailAddress.mail'] = $email;
    $args['conditions'][] = 'EmailAddress.verified IS true';
@@ -370,15 +378,15 @@ class HCConfirmersController extends StandardController {
    $args['fields'][] = 'DISTINCT EmailAddress.mail, EmailAddress.verified';
    $e = $this->EmailAddress->find('first', $args);
 
-  if( array_key_exists('EmailAddress', $e) && $e['EmailAddress']['verified'] == true ) {
+   if ( array_key_exists('EmailAddress', $e) && $e['EmailAddress']['verified'] == true ) {
       
-      $this->duplicate_email = true;
-
-      $emailData = [
-	'exists' => true, 
-	'message' => 'We already have this email on file with <em>Humanities Commons</em>.',
-	'hc_domain' => constant( 'HC_DOMAIN' )
-      ];
+     $this->duplicate_email = true;
+     $emailData = [
+       'exists' => true, 
+       'check_type' => 'COmanage Email List',
+       'message' => 'We already have this email on file with <em>Humanities Commons</em>.',
+       'hc_domain' => constant( 'HC_DOMAIN' )
+     ];
 
     } else {
       $emailData = ['exists' => false];
@@ -389,11 +397,53 @@ class HCConfirmersController extends StandardController {
         $this->duplicate_email = true;
         $emailData = [
 	  'exists' => true,
+          'check_type' => 'Domain Deny List',
 	  'message' => 'We already have this email on file with <em>Humanities Commons</em>.',
 	  'hc_domain' => constant( 'HC_DOMAIN' )
         ];
+        return $emailData;
       }
     }
+ 
+    // Only need to worry about HC right now.
+    if ( ! in_array( $this->societies[$current_ef_id], array( 'HC' ) ) ) {
+      return $emailData;
+    }
+
+    // Don't need to worry about certain domains.
+    if ( preg_match( '/\.edu$|\.edu\...$|\.ac\...$|\.ca$|\...\.us$/', $email ) ) {
+      $this->log($logPrefix . 'Petition ID:' . $invite['CoPetition']['id'] . ' - NO Spam Check:' . $email );
+      return $emailData;
+    }
+
+    // Let's check for spammers
+    $opts = array(
+      'http' => array (
+        'method'=>"POST",
+        'content'=>http_build_query( array( 'ip'=>env('HTTP_X_FORWARDED_FOR'), 'email'=>$email, 'json'=>'' ) )
+      )
+    );
+
+    $context = stream_context_create($opts);
+
+    $fp = file_get_contents('https://api.stopforumspam.org/api', false, $context);
+    $result = json_decode($fp, true);
+    $this->log($logPrefix . 'Petition ID:' . $invite['CoPetition']['id'] . ' - Spam Check:' . var_export( $result, true ) );
+
+    if ( 1 == $result['success'] ) {
+        if ( 0 != $result['email']['appears'] ) {
+            $this->duplicate_email = true;
+            $emailData = [
+             'exists' => true,
+             'check_type' => 'Spam Check',
+             'message' => 'We already have this email on file with <em>Humanities Commons</em>.',
+             'hc_domain' => constant( 'HC_DOMAIN' )
+            ];
+            $this->log($logPrefix . 'Petition ID:' . $invite['CoPetition']['id'] . ' - Spam Check:' . var_export( $result, true ) );
+            return $emailData;
+        }
+    }
+
     return $emailData;
 
   }
