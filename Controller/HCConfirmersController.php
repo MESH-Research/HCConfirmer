@@ -34,17 +34,21 @@ class HCConfirmersController extends StandardController {
  
   public $uses = array('HCConfirmer.HCConfirmer', 'OrgIdentity', 'OrgIdentitySource', 'OrgIdentitySourceRecord','CoPetition', 'CoPerson', 'EmailAddress', 'CoEnrollmentFlow', 'CoInvite', 'CoPetitionHistoryRecord' );
 
+  // Enrollment Flow ID => Society ID
   public $societies = [
     '162' => 'AJS',
     '164' => 'ASEEES',
     '166' => 'CAA',
+    '673' => 'HASTAC',
     '158' => 'HC',
     '606' => 'HC', //digiped
+//    '680' => 'HC', //HC on staging
     '160' => 'MLA',
     '389' => 'UP',
     '604' => 'MSU',
     '590' => 'ARLISNA',
-    '598' => 'SAH'
+    '598' => 'SAH',
+    '685' => 'DHRI'
   ];
 
   public $bad_domains = [
@@ -276,13 +280,21 @@ class HCConfirmersController extends StandardController {
 	//lets check if the current user is expired and belongs to the MLA enrollment flow
 	if( $this->societies[$current_ef_id] == 'MLA' ) {
 
-		$detail_record = $this->OrgIdentitySource->retrieve($s['OrgIdentitySource']['id'], $key);
+          //$this->log($logPrefix . '--' . $current_ef_id . '--' . $s['OrgIdentitySource']['id'] . '--' . $key);
 
-		$is_expired = $this->calculate_expiration( $detail_record, $society, $this->societies[$current_ef_id] );
+          try {
+           $detail_record = $this->OrgIdentitySource->retrieve($s['OrgIdentitySource']['id'], $key);
+          }
+            catch ( Exception $e ) {
+            $detail_record = '';
+          }
+          if ( ! empty( $detail_record ) ) {
+            $is_expired = $this->calculate_expiration( $detail_record, $society, $this->societies[$current_ef_id] );
+          } 
 
 	} elseif ( $this->societies[$current_ef_id] != 'HC' ) {
 
-		$is_expired = $this->calculate_expiration( $c, $society, $this->societies[$current_ef_id] );	
+          $is_expired = $this->calculate_expiration( $c, $society, $this->societies[$current_ef_id] );	
 
 	}
 
@@ -428,7 +440,7 @@ class HCConfirmersController extends StandardController {
 
     $fp = file_get_contents('https://api.stopforumspam.org/api', false, $context);
     $result = json_decode($fp, true);
-    $this->log($logPrefix . 'Petition ID:' . $invite['CoPetition']['id'] . ' - Spam Check:' . var_export( $result, true ) );
+    //$this->log($logPrefix . 'Petition ID:' . $invite['CoPetition']['id'] . ' - Spam Check:' . var_export( $result, true ) );
 
     if ( 1 == $result['success'] ) {
         if ( 0 != $result['email']['appears'] ) {
