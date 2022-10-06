@@ -25,6 +25,11 @@
  * @license       Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
  */
 
+  $default_societies = array( 'HC' );
+  if( $current_enrollment_flow_cou == 'HASTAC' ) {
+    $default_societies[] = 'HASTAC';
+  }
+
   if(!empty($invite['CoInvite']['email_address_id'])) {
 
     // We are verifying email
@@ -50,7 +55,7 @@
 
 
   if( ! is_null( $user_societies ) &&
-         in_array( $societies_list[$current_enrollment_flow_id], array_merge( $user_societies, array( 'HC' ) ) ) &&
+         in_array( $societies_list[$current_enrollment_flow_id], array_merge( $user_societies, $default_societies ) ) &&
          $email_verify['exists'] == false ) {
 
     print $this->Html->link(
@@ -85,7 +90,7 @@
 
     }
 
-    if( $current_enrollment_flow_cou != 'HC' && $current_enrollment_flow_cou != 'UP' && $email_verify['exists'] == false ) {
+    if( ! in_array( $current_enrollment_flow_cou, $default_societies ) && $current_enrollment_flow_cou != 'UP' && $email_verify['exists'] == false ) {
 
        print $this->Html->link(
         _txt('op.hcc.ret.hc'),
@@ -97,6 +102,7 @@
        );
  
      //'https://' . $societies_list[$current_enrollment_flow_id] . '.' . constant('HC_DOMAIN'),
+     // this logic below is suspect to say the least
      } else if( $current_enrollment_flow_cou == 'HC' && $email_verify['exists'] == true ||
  $current_enrollment_flow_cou != 'HC' && $email_verify['exists'] == true ) {
 
