@@ -33,17 +33,18 @@
   print $this->element("pageTitle", $params);
   
   $verifyEmail = !empty($invite['CoInvite']['email_address_id']);
+  $open_societies = array ( 'HC', 'HASTAC' );
 
 ?>
 
-<?php if( $current_enrollment_flow_cou !== 'HC' ) : ?>
+<?php if( 'HC' !== $current_enrollment_flow_cou && 'HASTAC' !== $current_enrollment_flow_cou ) : ?>
 
 <?php if( $email_verify['exists'] == true ) : ?>
 <div class="enrollment_flow_msg_dupe">
 <?php  echo _txt('op.hcc.email.duplicate');
     else : ?>
 <div class="enrollment_flow_msg">
-  <?php if( $current_enrollment_flow_cou != 'HC' && $user_expired == true ) {
+  <?php if( 'HC' !== $current_enrollment_flow_cou && 'HASTAC' !== $current_enrollment_flow_cou && $user_expired == true ) {
       echo sprintf( _txt('op.hcc.email.exp'), $current_enrollment_flow_cou );
 
       print $this->Html->link(
@@ -54,7 +55,8 @@
            $invite['CoInvite']['invitation'], $current_enrollment_flow_cou),
          array('class' => 'cancelbutton')
        );
-       
+
+      // Don't show HC for UP enrollments       
       if( $current_enrollment_flow_cou != 'UP' ) {
         print $this->Html->link(
         _txt('op.hcc.register.hc'),
