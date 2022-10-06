@@ -44,10 +44,23 @@ class HCConfirmersController extends StandardController {
     '389' => 'UP',
     '604' => 'MSU',
     '590' => 'ARLISNA',
-    '598' => 'SAH'
+    '598' => 'SAH',
+	'664' => 'HASTAC',
+	'670' => 'HASTAC'
   ];
 
   public $bad_domains = [
+    // added 7/22/22
+    'chitthi.in',
+    'fexpost.com',
+    'fexbox.org',
+    'inpwa.com',
+    'intopwa.com',
+    'mailto.plus',
+    'mailbox.in.ua',
+    'rover.info',
+    'tofeat.com',
+    //original list
     'autorambler.ru',
     'canfga.org',
     'dkb3.com',
