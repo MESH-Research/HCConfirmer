@@ -39,19 +39,34 @@ class HCConfirmersController extends StandardController {
     '162' => 'AJS',
     '164' => 'ASEEES',
     '166' => 'CAA',
-    '673' => 'HASTAC',
+    '673' => 'HASTAC', // HASTAC closed (dev)
+	'687' => 'HASTAC', // HASTAC open (dev)
     '158' => 'HC',
     '606' => 'HC', //digiped
-//    '680' => 'HC', //HC on staging
+    '680' => 'HC', //HC on staging
+	'692' => 'HC', //HC on hcdev2
     '160' => 'MLA',
     '389' => 'UP',
     '604' => 'MSU',
     '590' => 'ARLISNA',
     '598' => 'SAH',
-    '685' => 'DHRI'
+    '685' => 'DHRI',
+	'664' => 'HASTAC', // HASTAC closed (prod)
+	'670' => 'HASTAC'  // HASTAC open (prod)
   ];
 
   public $bad_domains = [
+    //added 7/22/22
+    'chitthi.in',
+    'fexpost.com',
+    'fexbox.org',
+    'inpwa.com',
+    'intopwa.com',
+    'mailto.plus',
+    'mailbox.in.ua',
+    'rover.info',
+    'tofeat.com',
+    //original list
     'autorambler.ru',
     'canfga.org',
     'dkb3.com',
@@ -72,6 +87,8 @@ class HCConfirmersController extends StandardController {
   public $duplicate_email = false;
 
   public $cur_enrollment_flow;
+
+  public $default_societies;
 
   public $expired_data = array();
 
@@ -186,8 +203,15 @@ class HCConfirmersController extends StandardController {
       
       $enrollmentFlow = $this->CoEnrollmentFlow->find('first', $args);
 
+      $default_societies = array( 'HC' );
+      if ( 673 == $invite['CoPetition']['co_enrollment_flow_id'] || 687 == $invite['CoPetition']['co_enrollment_flow_id']) {
+        $default_societies[] = 'HASTAC';
+      }
+
+// $this->log($logPrefix . ' HERE ' . var_export( $email_verify['exists'], true ) . ' 2 ' .var_export( $user_societies, true ) . ' 3 ' . var_export( $invite['CoPetition']['co_enrollment_flow_id'], true ) . ' 4 ' . var_export( $default_societies, true ) . ' 5 ' . var_export( $this->societies, true ) );
+
       if(!$emailVerify['exists'] && ( false === $user_societies ||
-        in_array($this->societies[$invite['CoPetition']['co_enrollment_flow_id']], array_merge($user_societies, array('HC')) ) ) ) {
+        in_array($this->societies[$invite['CoPetition']['co_enrollment_flow_id']], array_merge($user_societies, $default_societies) ) ) ) {
 	      $this->redirect( array( 'plugin' => null,
 				      'controller' => 'co_invites',
                                 'action' => (isset($enrollmentFlow['CoEnrollmentFlow']['require_authn']) &&
@@ -292,7 +316,7 @@ class HCConfirmersController extends StandardController {
             $is_expired = $this->calculate_expiration( $detail_record, $society, $this->societies[$current_ef_id] );
           } 
 
-	} elseif ( $this->societies[$current_ef_id] != 'HC' ) {
+	} elseif ( ! in_array( $this->societies[$current_ef_id], $default_societies ) ) {
 
           $is_expired = $this->calculate_expiration( $c, $society, $this->societies[$current_ef_id] );	
 
@@ -417,8 +441,8 @@ class HCConfirmersController extends StandardController {
       }
     }
  
-    // Only need to worry about HC right now.
-    if ( ! in_array( $this->societies[$current_ef_id], array( 'HC' ) ) ) {
+    // Only need to worry about HC and HASTAC right now.
+    if ( ! in_array( $this->societies[$current_ef_id], $default_societies ) ) {
       return $emailData;
     }
 
