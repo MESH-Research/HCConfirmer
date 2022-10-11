@@ -34,6 +34,7 @@ class HCConfirmersController extends StandardController {
  
   public $uses = array('HCConfirmer.HCConfirmer', 'OrgIdentity', 'OrgIdentitySource', 'OrgIdentitySourceRecord','CoPetition', 'CoPerson', 'EmailAddress', 'CoEnrollmentFlow', 'CoInvite', 'CoPetitionHistoryRecord' );
 
+  // Enrollment Flow ID => Society ID
   public $societies = [
     '162' => 'AJS',
     '164' => 'ASEEES',
@@ -303,13 +304,21 @@ class HCConfirmersController extends StandardController {
 	//lets check if the current user is expired and belongs to the MLA enrollment flow
 	if( $this->societies[$current_ef_id] == 'MLA' ) {
 
-		$detail_record = $this->OrgIdentitySource->retrieve($s['OrgIdentitySource']['id'], $key);
+          //$this->log($logPrefix . '--' . $current_ef_id . '--' . $s['OrgIdentitySource']['id'] . '--' . $key);
 
-		$is_expired = $this->calculate_expiration( $detail_record, $society, $this->societies[$current_ef_id] );
+          try {
+           $detail_record = $this->OrgIdentitySource->retrieve($s['OrgIdentitySource']['id'], $key);
+          }
+            catch ( Exception $e ) {
+            $detail_record = '';
+          }
+          if ( ! empty( $detail_record ) ) {
+            $is_expired = $this->calculate_expiration( $detail_record, $society, $this->societies[$current_ef_id] );
+          } 
 
 	} elseif ( ! in_array( $this->societies[$current_ef_id], $default_societies ) ) {
 
-		$is_expired = $this->calculate_expiration( $c, $society, $this->societies[$current_ef_id] );	
+          $is_expired = $this->calculate_expiration( $c, $society, $this->societies[$current_ef_id] );	
 
 	}
 
@@ -455,7 +464,7 @@ class HCConfirmersController extends StandardController {
 
     $fp = file_get_contents('https://api.stopforumspam.org/api', false, $context);
     $result = json_decode($fp, true);
-    $this->log($logPrefix . 'Petition ID:' . $invite['CoPetition']['id'] . ' - Spam Check:' . var_export( $result, true ) );
+    //$this->log($logPrefix . 'Petition ID:' . $invite['CoPetition']['id'] . ' - Spam Check:' . var_export( $result, true ) );
 
     if ( 1 == $result['success'] ) {
         if ( 0 != $result['email']['appears'] ) {
