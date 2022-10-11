@@ -204,9 +204,9 @@ class HCConfirmersController extends StandardController {
       $enrollmentFlow = $this->CoEnrollmentFlow->find('first', $args);
 
       $default_societies = array( 'HC' );
-      if ( 673 == $invite['CoPetition']['co_enrollment_flow_id'] || 687 == $invite['CoPetition']['co_enrollment_flow_id']) {
-        $default_societies[] = 'HASTAC';
-      }
+	  if ( $this->societies[ $invite['CoPetition']['co_enrollment_flow_id'] ] == 'HASTAC' ) {
+		  $default_societies[] = 'HASTAC';
+	  }
 
 // $this->log($logPrefix . ' HERE ' . var_export( $email_verify['exists'], true ) . ' 2 ' .var_export( $user_societies, true ) . ' 3 ' . var_export( $invite['CoPetition']['co_enrollment_flow_id'], true ) . ' 4 ' . var_export( $default_societies, true ) . ' 5 ' . var_export( $this->societies, true ) );
 
