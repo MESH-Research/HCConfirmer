@@ -88,7 +88,9 @@ class HCConfirmersController extends StandardController {
 
   public $cur_enrollment_flow;
 
-  public $default_societies;
+  public $default_societies = [ 'HC' ];
+
+  public $HASTAC_ois = [ 208 ];
 
   public $expired_data = array();
 
@@ -176,6 +178,9 @@ class HCConfirmersController extends StandardController {
       $this->set('duplicate_email', '0');
     }
 
+    //special check to set username for migrated HASTAC users
+    $user_societies = $this->searchHASTACByEmail( $invitee['CoInvite']['mail'], $invite['CoPetition']['co_enrollment_flow_id'] );
+
     $user_societies = $this->searchByEmail( $invitee['CoInvite']['mail'], $invite['CoPetition']['co_enrollment_flow_id'] );
 
     //if the current society is not in the $user_societies array, then the user is expired
@@ -203,15 +208,14 @@ class HCConfirmersController extends StandardController {
       
       $enrollmentFlow = $this->CoEnrollmentFlow->find('first', $args);
 
-      $default_societies = array( 'HC' );
-	  if ( $this->societies[ $invite['CoPetition']['co_enrollment_flow_id'] ] == 'HASTAC' ) {
-		  $default_societies[] = 'HASTAC';
-	  }
+      if ( $this->societies[ $invite['CoPetition']['co_enrollment_flow_id'] ] == 'HASTAC' ) {
+        $this->default_societies[] = 'HASTAC';
+      }
 
 // $this->log($logPrefix . ' HERE ' . var_export( $email_verify['exists'], true ) . ' 2 ' .var_export( $user_societies, true ) . ' 3 ' . var_export( $invite['CoPetition']['co_enrollment_flow_id'], true ) . ' 4 ' . var_export( $default_societies, true ) . ' 5 ' . var_export( $this->societies, true ) );
 
       if(!$emailVerify['exists'] && ( false === $user_societies ||
-        in_array($this->societies[$invite['CoPetition']['co_enrollment_flow_id']], array_merge($user_societies, $default_societies) ) ) ) {
+        in_array($this->societies[$invite['CoPetition']['co_enrollment_flow_id']], array_merge($user_societies, $this->default_societies) ) ) ) {
 	      $this->redirect( array( 'plugin' => null,
 				      'controller' => 'co_invites',
                                 'action' => (isset($enrollmentFlow['CoEnrollmentFlow']['require_authn']) &&
@@ -316,7 +320,7 @@ class HCConfirmersController extends StandardController {
             $is_expired = $this->calculate_expiration( $detail_record, $society, $this->societies[$current_ef_id] );
           } 
 
-	} elseif ( ! in_array( $this->societies[$current_ef_id], $default_societies ) ) {
+	} elseif ( ! in_array( $this->societies[$current_ef_id], $this->default_societies ) ) {
 
           $is_expired = $this->calculate_expiration( $c, $society, $this->societies[$current_ef_id] );	
 
@@ -334,6 +338,28 @@ class HCConfirmersController extends StandardController {
     }
     //$this->log('searchByEmail' . '9' . var_export($society_list,true));
 	return $society_list;
+
+  }
+
+  public function searchHASTACByEmail( $email, $current_ef_id ) {
+
+    $ret = array();
+
+    try {
+      $candidates = $this->OrgIdentitySource->search($this->HASTAC_ois, array('mail' => $email));
+      $this->log('searchHASTACByEmail' . ' 2 ' . var_export($candidates,true));
+      $returnedKeys = array_keys($candidates);
+
+      $returned_email = $candidates[$returnedKeys[0]]['EmailAddress'][0]['mail'];
+      $returned_username = $candidates[$returnedKeys[0]]['Identifier'][0]['identifier'];
+      $this->log('searchHASTACByEmail' . ' 1 . ' . $email . ' . ' . $returned_email. ' . ' . $returned_username );
+      if ( $email == $returned_email ) { 
+        $this->Session->write('HASTAC_username', $returned_username);
+      }
+
+    } catch( RuntimeException $e ) {
+    }
+    return;
 
   }
 
@@ -442,7 +468,7 @@ class HCConfirmersController extends StandardController {
     }
  
     // Only need to worry about HC and HASTAC right now.
-    if ( ! in_array( $this->societies[$current_ef_id], $default_societies ) ) {
+    if ( ! in_array( $this->societies[$current_ef_id], $this->default_societies ) ) {
       return $emailData;
     }
 
@@ -455,7 +481,7 @@ class HCConfirmersController extends StandardController {
     // Let's check for spammers
     $opts = array(
       'http' => array (
-        'method'=>"POST",
+        'method'=>'POST',
         'content'=>http_build_query( array( 'ip'=>env('HTTP_X_FORWARDED_FOR'), 'email'=>$email, 'json'=>'' ) )
       )
     );
