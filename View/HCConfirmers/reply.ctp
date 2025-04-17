@@ -72,7 +72,7 @@
 
     }
   ?>
-  <?php if( ! is_null( $societies_list[$current_enrollment_flow_id]  ) && ! in_array( $societies_list[$current_enrollment_flow_id], $user_societies ) && $user_expired == false ) :
+  <?php if( ! is_null( $current_enrollment_flow_cou ) && ! in_array( $current_enrollment_flow_cou, $user_societies ) && $user_expired == false ) :
    if( $current_enrollment_flow_cou == 'UP' ) {
 	echo sprintf( _txt('op.hcc.email.na.up') );
    } else {	

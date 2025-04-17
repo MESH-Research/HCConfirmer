@@ -54,8 +54,8 @@
   } else {
 
 
-  if( ! is_null( $user_societies ) &&
-         in_array( $societies_list[$current_enrollment_flow_id], array_merge( $user_societies, $default_societies ) ) &&
+  if( ! is_null( $current_enrollment_flow_cou ) &&
+         in_array( $current_enrollment_flow_cou, array_merge( $user_societies, $default_societies ) ) &&
          $email_verify['exists'] == false ) {
 
     print $this->Html->link(
@@ -101,7 +101,6 @@
          array('class' => 'cancelbutton')
        );
  
-     //'https://' . $societies_list[$current_enrollment_flow_id] . '.' . constant('HC_DOMAIN'),
      // this logic below is suspect to say the least
      } else if( $current_enrollment_flow_cou == 'HC' && $email_verify['exists'] == true ||
  $current_enrollment_flow_cou != 'HC' && $email_verify['exists'] == true ) {

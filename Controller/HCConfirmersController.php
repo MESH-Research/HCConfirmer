@@ -26,36 +26,27 @@
 
  App::uses("StandardController", "Controller");
 
-require_once('/var/www/env.php');
-
 class HCConfirmersController extends StandardController {
   // Class name, used by Cake
   public $name = "HCConfirmers";
  
-  public $uses = array('HCConfirmer.HCConfirmer', 'OrgIdentity', 'OrgIdentitySource', 'OrgIdentitySourceRecord','CoPetition', 'CoPerson', 'EmailAddress', 'CoEnrollmentFlow', 'CoInvite', 'CoPetitionHistoryRecord' );
-
-  // Enrollment Flow ID => Society ID
-  public $societies = [
-    '162' => 'AJS',
-    '164' => 'ASEEES',
-    '166' => 'CAA',
-    '673' => 'HASTAC', // HASTAC closed (dev)
-	'687' => 'HASTAC', // HASTAC open (dev)
-    '158' => 'HC',
-    '606' => 'HC', //digiped
-    '680' => 'HC', //HC on staging
-	'692' => 'HC', //HC on hcdev2
-    '160' => 'MLA',
-    '389' => 'UP',
-    '604' => 'MSU',
-    '590' => 'ARLISNA',
-    '598' => 'SAH',
-    '685' => 'DHRI',
-	'664' => 'HASTAC', // HASTAC closed (prod)
-	'670' => 'HASTAC'  // HASTAC open (prod)
+  public $uses = [
+    'HCConfirmer.HCConfirmer',
+    'OrgIdentity',
+    'OrgIdentitySource',
+    'OrgIdentitySourceRecord',
+    'CoPetition',
+    'CoPerson',
+    'EmailAddress',
+    'CoEnrollmentFlow',
+    'CoEnrollmentAttribute',
+    'CoInvite',
+    'CoPetitionHistoryRecord',
+    'Cou'
   ];
 
-  public $bad_domains = [
+
+  public array $bad_domains = [
     //added 7/22/22
     'chitthi.in',
     'fexpost.com',
@@ -84,13 +75,13 @@ class HCConfirmersController extends StandardController {
     'ro.ru'
   ];
 
-  public $duplicate_email = false;
+  public bool $duplicate_email = false;
 
-  public $cur_enrollment_flow;
+  public ?string $cur_enrollment_flow = null;
 
-  public $default_societies;
+  public array $default_societies = [];
 
-  public $expired_data = array();
+  public array $expired_data = [];
 
   /**
    * Callback before other controller methods are invoked or views are rendered.
@@ -99,7 +90,6 @@ class HCConfirmersController extends StandardController {
    * @since  COmanage Registry v3.1.0
    * @throws UnauthorizedException (REST)
    */
-  
   function beforeFilter() {
     // Since we're overriding, we need to call the parent to run the authz check
     parent::beforeFilter();
@@ -157,9 +147,19 @@ class HCConfirmersController extends StandardController {
     $args['contain'] = array('CoPetition', 'EmailAddress');
     
     $invite = $this->CoInvite->find('first', $args);
+    $cou_id = $invite['CoPetition']['cou_id'] ?? null;
+    if ( $cou_id ) {
+      $cou = $this->Cou->find('first', [
+        'conditions' => [
+          'Cou.id' => $cou_id
+        ]
+      ]);
+    } else {
+      $this->log($logPrefix . 'No COU ID found for petition ' . $invite['CoPetition']['id']);
+      $cou = null;
+    }
 
     $this->set('invite', $invite);
-
     $args = array();
     $args['conditions']['CoPerson.id'] = $invite['CoInvite']['co_person_id'];
     $args['contain'] = array('CoInvite', 'PrimaryName', 'CoPersonRole');    
@@ -170,7 +170,7 @@ class HCConfirmersController extends StandardController {
     //TODO might have to search for active Org Identities
     $emailVerify = $this->checkEmailAvailability( $invitee['CoInvite']['mail'], $invite['CoPetition']['enrollee_org_identity_id'], $invite['CoPetition']['co_enrollment_flow_id'] );
 
-    if( $this->duplicate_email == true ) {
+    if( $this->duplicate_email ) {
       $this->set('duplicate_email', '1');
     } else {
       $this->set('duplicate_email', '0');
@@ -179,39 +179,40 @@ class HCConfirmersController extends StandardController {
     $user_societies = $this->searchByEmail( $invitee['CoInvite']['mail'], $invite['CoPetition']['co_enrollment_flow_id'] );
 
     //if the current society is not in the $user_societies array, then the user is expired
-    if( ! empty( $this->expired_data ) && $this->expired_data['status'] == true ) {
+    if( ! empty( $this->expired_data ) && $this->expired_data['status'] ) {
 	$this->set('user_expired', true);
     } else {
 	$this->set('user_expired', false);
     }
 
     $this->set('user_societies', $user_societies);
-    $this->set('current_enrollment_flow_cou', $this->societies[$invite['CoPetition']['co_enrollment_flow_id']]);
+    $this->set('current_enrollment_flow_cou', $cou['Cou']['name'] ?? null);
     $this->set('current_enrollment_flow_id', $invite['CoPetition']['co_enrollment_flow_id'] );
-    $this->set('societies_list', $this->societies );   
     $this->set('email_verify', $emailVerify );
     $this->set('invitee', $invitee);
     $this->set('title_for_layout', 'Invitation to Humanities Commons');
-    $this->set('hc_domain', constant('HC_DOMAIN') );
+    $this->set('hc_domain', getenv('HC_DOMAIN') );
 
     $petition = $this->CoPetition->find('first', [ 'conditions' => [ 'CoPetition.enrollee_co_person_id' => $invite['CoInvite']['co_person_id'] ], 'recursive' => -1 ] );
 
     if(!empty($invite['CoPetition']['co_enrollment_flow_id'])) {
       $args = array();
       $args['conditions']['CoEnrollmentFlow.id'] = $invite['CoPetition']['co_enrollment_flow_id'];
-      $args['contain'][] = 'CoEnrollmentAttribute';
+      #$args['contain'] = ['CoEnrollmentAttribute', 'CoEnrollmentAttributeDefault'];
       
       $enrollmentFlow = $this->CoEnrollmentFlow->find('first', $args);
+      $this->log($logPrefix . 'enrollmentFlow: ' . var_export( $enrollmentFlow, true ) );
 
-      $default_societies = array( 'HC' );
+
+      $this->default_societies = [ 'HC' ];
 	  if ( $this->societies[ $invite['CoPetition']['co_enrollment_flow_id'] ] == 'HASTAC' ) {
-		  $default_societies[] = 'HASTAC';
+		  $this->default_societies[] = 'HASTAC';
 	  }
 
 // $this->log($logPrefix . ' HERE ' . var_export( $email_verify['exists'], true ) . ' 2 ' .var_export( $user_societies, true ) . ' 3 ' . var_export( $invite['CoPetition']['co_enrollment_flow_id'], true ) . ' 4 ' . var_export( $default_societies, true ) . ' 5 ' . var_export( $this->societies, true ) );
 
       if(!$emailVerify['exists'] && ( false === $user_societies ||
-        in_array($this->societies[$invite['CoPetition']['co_enrollment_flow_id']], array_merge($user_societies, $default_societies) ) ) ) {
+        in_array($this->societies[$invite['CoPetition']['co_enrollment_flow_id']], array_merge($user_societies, $this->default_societies) ) ) ) {
 	      $this->redirect( array( 'plugin' => null,
 				      'controller' => 'co_invites',
                                 'action' => (isset($enrollmentFlow['CoEnrollmentFlow']['require_authn']) &&
@@ -242,7 +243,7 @@ class HCConfirmersController extends StandardController {
 
   public function searchByEmail( $email, $current_ef_id ) {
 
-    $ret = array();
+    $ret = [];
 
     // First we need to figure out what plugins we have available.
 
@@ -254,11 +255,11 @@ class HCConfirmersController extends StandardController {
     $sources = $this->OrgIdentitySource->find('all', $args);
 
     if(empty($sources)) {
-      return false;
+      return [];
     }
 
-    $society_list = array();
-    $is_expired = array();
+    $society_list = [];
+    $is_expired = [];
 
     foreach($sources as $s) {
 
@@ -323,7 +324,7 @@ class HCConfirmersController extends StandardController {
 	}
 
 	//lets only add the societies that are not expired into the list
-        if( count( $society ) > 1 && array_key_exists($society[0], $is_expired) == false || $this->expired_data['status'] == false ) { 
+        if( count( $society ) > 1 && ! array_key_exists($society[0], $is_expired) || ! $this->expired_data['status'] ) { 
           $society_list[] = $society[0];
         }
 
@@ -348,7 +349,7 @@ class HCConfirmersController extends StandardController {
  */
   public function calculate_expiration( $org_arr, $user_society, $cur_ef ) {
 
-    $expired = array();
+    $expired = [];
 
     if( array_key_exists( 'orgidentity', $org_arr ) ) {
 	
@@ -358,12 +359,12 @@ class HCConfirmersController extends StandardController {
 		    if( ( date('Y-m-d', strtotime( $org_arr['orgidentity']['OrgIdentity']['valid_through']) ) < date('Y-m-d') ) ) {
 			 if( $user_society[0] == $cur_ef ) {
 			 	$expired[$user_society[0]]['status'] = true;
-				$this->expired_data = array('society' => $cur_ef, 'status' => 'true');  
+				$this->expired_data = ['society' => $cur_ef, 'status' => 'true'];  
 			 }
 		     }
 
 		} else {
-		    $this->expired_data = array('society' => false, 'status' => false);
+		    $this->expired_data = ['society' => false, 'status' => false];
 		    $expired[$user_society[0]]['status'] = false;
 		}
 
@@ -375,12 +376,12 @@ class HCConfirmersController extends StandardController {
             if( ( date('Y-m-d', strtotime($org_arr['OrgIdentity']['valid_through']) ) < date('Y-m-d') ) ) {
 		 if( $user_society[0] == $cur_ef ) {
 		     $expired[$user_society[0]]['status'] = true;
-		     $this->expired_data = array('society' => $cur_ef, 'status' => 'true');
+		     $this->expired_data = ['society' => $cur_ef, 'status' => 'true'];
 		 }
              }
 
         } else {
-	    $this->expired_data = array('society' => false, 'status' => false);
+	    $this->expired_data = ['society' => false, 'status' => false];
             $expired[$user_society[0]]['status'] = false;
         }
 
@@ -406,7 +407,7 @@ class HCConfirmersController extends StandardController {
     * Check if the email has been verified at any time in the past.
     */
    $logPrefix = "HCConfirmersController checkEmailAvailability ";
-   $args = array();
+   $args = [];
    $args['conditions']['EmailAddress.mail'] = $email;
    $args['conditions'][] = 'EmailAddress.verified IS true';
    $args['conditions'][] = 'EmailAddress.email_address_id IS NULL';
@@ -421,7 +422,7 @@ class HCConfirmersController extends StandardController {
        'exists' => true, 
        'check_type' => 'COmanage Email List',
        'message' => 'We already have this email on file with <em>Humanities Commons</em>.',
-       'hc_domain' => constant( 'HC_DOMAIN' )
+       'hc_domain' => getenv('HC_DOMAIN')
      ];
 
     } else {
@@ -435,14 +436,14 @@ class HCConfirmersController extends StandardController {
 	  'exists' => true,
           'check_type' => 'Domain Deny List',
 	  'message' => 'We already have this email on file with <em>Humanities Commons</em>.',
-	  'hc_domain' => constant( 'HC_DOMAIN' )
+	  'hc_domain' => getenv('HC_DOMAIN')
         ];
         return $emailData;
       }
     }
  
     // Only need to worry about HC and HASTAC right now.
-    if ( ! in_array( $this->societies[$current_ef_id], $default_societies ) ) {
+    if ( ! in_array( $this->societies[$current_ef_id], $this->default_societies ) ) {
       return $emailData;
     }
 
@@ -453,12 +454,12 @@ class HCConfirmersController extends StandardController {
     }
 
     // Let's check for spammers
-    $opts = array(
-      'http' => array (
+    $opts = [
+      'http' => [
         'method'=>"POST",
         'content'=>http_build_query( array( 'ip'=>env('HTTP_X_FORWARDED_FOR'), 'email'=>$email, 'json'=>'' ) )
-      )
-    );
+      ]
+    ];
 
     $context = stream_context_create($opts);
 
@@ -473,7 +474,7 @@ class HCConfirmersController extends StandardController {
              'exists' => true,
              'check_type' => 'Spam Check',
              'message' => 'We already have this email on file with <em>Humanities Commons</em>.',
-             'hc_domain' => constant( 'HC_DOMAIN' )
+             'hc_domain' => getenv('HC_DOMAIN')
             ];
             $this->log($logPrefix . 'Petition ID:' . $invite['CoPetition']['id'] . ' - Spam Check:' . var_export( $result, true ) );
             return $emailData;
@@ -487,9 +488,9 @@ class HCConfirmersController extends StandardController {
   public function decline_petition( $inviteid ) {
 
     $logPrefix = "HCConfirmersController decline_petition ";
-    $args = array();
+    $args = [];
     $args['conditions']['CoInvite.invitation'] = $inviteid;
-    $args['contain'] = array('CoPetition', 'EmailAddress');
+    $args['contain'] = [ 'CoPetition', 'EmailAddress' ];
 
     $invite = $this->CoInvite->find('first', $args);
 
@@ -505,15 +506,15 @@ class HCConfirmersController extends StandardController {
         $current_society_id = array_search( $this->params['pass'][1], $this->societies );
 
         if( $this->params['pass'][1] == 'remind-me' ) {
-            $this->redirect('https://' . constant('HC_DOMAIN') . '/remind-me' );
+            $this->redirect('https://' . getenv('HC_DOMAIN') . '/remind-me' );
         } else if( in_array( $this->params['pass'][1], $this->societies ) == true ) {
             $this->redirect( array( 'plugin' => null, 'controller' => 'co_petitions', 'action' => 'start', 'coef:' . $current_society_id ) );
         } else if ( $this->params['pass'][1] == 'commons' )  {
-            $this->redirect('https://' . constant('HC_DOMAIN') );
+            $this->redirect('https://' . getenv('HC_DOMAIN') );
 	} else if( $this->params['pass'][1] == 'up' ) {
-	    $this->redirect('https://up.' . constant('HC_DOMAIN') ); 
+	    $this->redirect('https://up.' . getenv('HC_DOMAIN') ); 
         } else {
-            $this->redirect('https://' . constant('HC_DOMAIN') ); //Have to go somewhere
+            $this->redirect('https://' . getenv('HC_DOMAIN') ); //Have to go somewhere
         }
     } catch(Exception $e) {
         echo $e->getMessage();
